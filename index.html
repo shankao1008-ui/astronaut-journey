@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>太空人的太陽系之旅 · 第一人稱步行版</title>
+<meta name="description" content="第一人稱、積木馬賽克風格的太陽系步行之旅:從地球發射場出發,踏上月球、火星、木衛二、冥王星與系外行星。">
+<style>
+:root{--accent:#F2CD37;--pt:env(safe-area-inset-top,0px);--pr:env(safe-area-inset-right,0px);--pb:env(safe-area-inset-bottom,0px);--pl:env(safe-area-inset-left,0px)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#07080c;color:#eef1f7;overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+#look{position:fixed;inset:0;z-index:1;cursor:grab}
+#look.drag{cursor:grabbing}
+/* 頭盔窗框 */
+#helmet{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+#helmet::before{content:'';position:absolute;inset:-7vh -3vw;border-radius:50%;
+  box-shadow:0 0 0 300vmax #07080c,inset 0 0 0 12px #c9a227,inset 0 0 0 20px #7a621c,inset 0 0 0 24px #2a2416,inset 0 0 70px 36px rgba(0,0,0,.72)}
+#helmet::after{content:'';position:absolute;inset:-7vh -3vw;border-radius:50%;
+  background:radial-gradient(ellipse at 22% 18%,rgba(255,255,255,.16) 0,rgba(255,255,255,.05) 18%,rgba(255,255,255,0) 30%),
+             radial-gradient(ellipse at 80% 85%,rgba(255,255,255,.08) 0,rgba(255,255,255,0) 22%)}
+#fade{position:fixed;inset:0;z-index:4;background:#000;opacity:0;pointer-events:none;transition:opacity .4s}
+#phase{position:fixed;left:0;right:0;top:26%;z-index:5;text-align:center;font-size:clamp(20px,4vw,34px);font-weight:600;letter-spacing:.1em;opacity:0;transition:opacity .3s;pointer-events:none;text-shadow:0 2px 20px #000}
+#phase small{display:block;font-size:.45em;font-weight:400;opacity:.85;margin-top:8px;letter-spacing:.05em}
+#phase{transition:opacity .8s}
+#ui{position:fixed;inset:0;z-index:3;pointer-events:none;display:flex;flex-direction:column;
+  padding:calc(10px + var(--pt)) calc(14px + var(--pr)) calc(8px + var(--pb)) calc(14px + var(--pl))}
+#top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+#title{font-size:11px;letter-spacing:.22em;opacity:.75;padding-top:4px;white-space:nowrap;text-shadow:0 1px 8px #000}
+html[lang=en] #title{letter-spacing:.08em}
+#titleWrap{display:flex;flex-direction:column;gap:6px}
+#langbar{display:inline-flex;pointer-events:auto;border:1px solid rgba(255,255,255,.25);border-radius:999px;overflow:hidden;background:rgba(10,14,28,.6);align-self:flex-start}
+#langbar button{min-height:32px;padding:0 12px;border:0;border-radius:0;font-size:12px;background:transparent;color:#fff;opacity:.7;-webkit-backdrop-filter:none;backdrop-filter:none}
+#langbar button.on{background:var(--accent);color:#1a1400;opacity:1;font-weight:700}
+html[lang=en] .zh{display:none}
+html[lang=zh-Hant] .en{display:none}
+#counter{text-align:right;font-variant-numeric:tabular-nums;text-shadow:0 1px 8px #000,0 0 2px #000}
+#counter b{font-size:clamp(17px,3vw,22px);font-weight:600}
+#counter span{font-size:12px;opacity:.8;margin-left:4px}
+#counter small{display:block;font-size:11px;opacity:.65;margin-top:1px}
+#station{margin-top:6px;max-width:62vw;text-shadow:0 2px 16px #000}
+#station h1{margin:0;font-size:clamp(22px,4.4vw,38px);font-weight:600;line-height:1.15}
+#station h1 small{font-size:.42em;font-weight:400;opacity:.65;margin-left:.4em}
+#station p{margin:4px 0 0;font-size:13px;opacity:.8}
+#spacer{flex:1}
+#card{pointer-events:auto;align-self:flex-end;width:min(330px,100%);background:rgba(8,12,24,.72);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;margin-bottom:10px;transition:opacity .5s,transform .5s;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+#card.hide{opacity:0;transform:translateY(12px);pointer-events:none}
+#card .site{font-size:11px;color:var(--accent);letter-spacing:.08em;margin-bottom:6px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px}
+.stats div{font-size:11px;opacity:.65;line-height:1.3}
+.stats b{display:block;font-size:14px;font-weight:600;color:#fff;opacity:1;font-variant-numeric:tabular-nums}
+.fact{font-size:12.5px;line-height:1.55;margin:10px 0 0}
+.note{font-size:10.5px;opacity:.8;margin:7px 0 0;color:#ffd97a;line-height:1.5}
+#bottom{display:flex;flex-direction:column;align-items:center;gap:7px}
+.row{display:flex;gap:8px;pointer-events:auto;align-items:center;justify-content:center;flex-wrap:wrap}
+button{font:inherit;cursor:pointer;min-height:48px;border-radius:12px;border:1px solid rgba(255,255,255,.2);padding:0 16px;font-size:14px;
+  background:rgba(20,24,40,.7);color:#fff;transition:transform .12s,opacity .2s,background .2s;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+button:active{transform:scale(.97)}
+button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+button:disabled{opacity:.45;cursor:default}
+#next{background:#FE8A18;color:#1a0d00;font-weight:700;border-color:transparent}
+#jump{min-width:72px}
+#dots{display:flex;gap:6px;pointer-events:auto;flex-wrap:wrap;justify-content:center;max-width:420px}
+#dots button{min-height:0;width:10px;height:10px;padding:0;border-radius:50%;background:rgba(255,255,255,.25);border:0;position:relative;-webkit-backdrop-filter:none;backdrop-filter:none}
+#dots button::before{content:'';position:absolute;inset:-9px}
+#dots button.done{background:rgba(242,205,55,.5)}
+#dots button.on{background:var(--accent);box-shadow:0 0 10px var(--accent);transform:scale(1.3)}
+footer{font-size:9.5px;opacity:.55;text-align:center;line-height:1.5;max-width:760px;text-shadow:0 1px 6px #000}
+footer button{min-height:0;padding:0;background:none;border:0;color:inherit;text-decoration:underline;font-size:inherit;pointer-events:auto;-webkit-backdrop-filter:none;backdrop-filter:none}
+#about{position:fixed;inset:0;background:rgba(3,4,12,.9);display:none;align-items:center;justify-content:center;padding:20px;z-index:9}
+#about.open{display:flex}
+#about>div{max-width:560px;background:#0b1020;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:20px 22px;font-size:13px;line-height:1.7;max-height:85vh;overflow:auto}
+#about h2{margin:0 0 8px;font-size:17px}
+#about ul{padding-left:18px;margin:6px 0}
+#err{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;background:#07080c;font-size:15px;line-height:1.7}
+#finale{position:fixed;inset:0;z-index:5;pointer-events:none}
+#finale .lbl{position:absolute;transform:translate(-50%,-100%);font-size:12px;color:#fff;text-shadow:0 1px 6px #000;white-space:nowrap;opacity:0;transition:opacity .6s}
+#finale .lbl::after{content:'';position:absolute;left:50%;top:100%;width:1px;height:14px;background:#ffd97a}
+#finale .lbl i{display:block;width:6px;height:6px;border-radius:50%;background:#ffd97a;margin:0 auto 14px}
+#finale .lbl.below{transform:translate(-50%,14px);font-size:11px;opacity:0;text-align:center;line-height:1.4}
+#finale .lbl.below::after{display:none}
+#finale .big{position:absolute;left:0;right:0;top:9%;text-align:center;font-size:clamp(22px,5vw,44px);font-weight:600;text-shadow:0 2px 20px #000;opacity:0;transition:opacity 1s}
+#finale .big small{display:block;font-size:.4em;font-weight:400;opacity:.85;margin-top:8px}
+@media (max-width:720px),(orientation:portrait){
+  #station{max-width:66vw}
+  #card{align-self:stretch;width:auto;padding:10px 12px}
+  .stats div{font-size:10px}.stats b{font-size:12.5px}.fact{font-size:11.5px}
+  button{padding:0 12px;font-size:13px}
+  .row{width:100%}
+  #next,#prev{flex:1}
+  footer{font-size:8.5px}
+}
+@media (prefers-reduced-motion:reduce){#card,#fade,#phase,button{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="look" aria-hidden="true"></div>
+<div id="helmet" aria-hidden="true"></div>
+<div id="fade" aria-hidden="true"></div>
+<div id="phase" aria-live="polite"></div>
+<div id="finale" aria-hidden="true"></div>
+<div id="ui">
+  <div id="top">
+    <div id="titleWrap"><div id="title">太空人的太陽系之旅 · 步行版</div><div id="langbar" role="group" aria-label="Language / 語言"><button data-lang="zh" class="on" aria-label="繁體中文">繁中</button><button data-lang="en" aria-label="English">EN</button></div></div>
+    <div id="counter"><b id="distVal">1.00</b><span id="distUnit">AU</span><small id="distLabel">距太陽</small></div>
+  </div>
+  <div id="station"><h1 id="stName"></h1><p id="stSub"></p></div>
+  <div id="spacer"></div>
+  <div id="card"><div class="site" id="site"></div><div class="stats" id="stats"></div><p class="fact" id="fact"></p><p class="note" id="note"></p></div>
+  <div id="bottom">
+    <div class="row">
+      <button id="lookBtn" aria-label="看向天空">看向天空</button>
+      <button id="jump" aria-label="跳">跳</button>
+      <button id="infoBtn" aria-label="顯示資訊卡">資訊</button>
+    </div>
+    <div class="row">
+      <button id="prev" aria-label="上一站">← 上一站</button>
+      <button id="next" aria-label="前往下一站">前往下一站 →</button>
+      <button id="photo" aria-label="拍照並下載">拍照</button>
+    </div>
+    <div id="dots" role="tablist" aria-label="站點進度"></div>
+    <footer><span class="zh">場景為積木風格的示意圖,地形高低與細節為簡化版本。距離已縮短,天空中天體大小依真實角直徑估算。系外行星尚無實拍影像,地表外觀為依大小、溫度與主星推估。<br>
+    資料出處:NASA Solar System Exploration、NASA/JPL Horizons、NASA Exoplanet Archive、ESA Gaia;任務:阿波羅、金星號、新視野號、卡西尼號、朱諾號、航海家、哈伯。 </span><span class="en">Brick-style illustration; terrain and details are simplified. Distances are compressed; sky objects are sized by their true angular diameter. No real images of exoplanets exist; their surfaces are inferred from size, temperature and host star.<br>
+    Sources: NASA Solar System Exploration, NASA/JPL Horizons, NASA Exoplanet Archive, ESA Gaia; missions: Apollo, Venera, New Horizons, Cassini, Juno, Voyager, Hubble. </span><button id="aboutBtn"><span class="zh">關於 / 操作說明</span><span class="en">About / Controls</span></button></footer>
+  </div>
+</div>
+<div id="about" role="dialog" aria-modal="true">
+  <div>
+    <div class="zh">
+    <h2>關於《太空人的太陽系之旅 · 步行版》</h2>
+    <p>第一人稱視角的太空人步行旅程。每一站降落在真實可站立的天體上:太陽與氣態巨行星沒有固態地表,所以太陽站改在隔熱觀景艙,木星、土星、天王星、海王星則降落在它們的衛星(木衛二、土衛二、天衛五、海衛一),巨大的行星掛在天上。</p>
+    <p><b>操作</b>:降落後太空人會自動一直往前走;拖曳畫面環顧四周並改變前進方向;「跳」依該天體重力跳躍。鍵盤:S / ↓ 按住暫停前進,A D / ← → 轉向,Q E 抬頭低頭,空白鍵跳,N / P 下一站 / 上一站。</p>
+    <p><b>誠實標示</b>:場景為積木風格的示意圖;距離已縮短;天空中天體的大小依真實角直徑估算(小於 1.5° 的天體放大到 1.5° 以便辨識);系外行星地表外觀為依大小、溫度與主星推估。作品採用一般積木風格,與任何積木品牌無關。</p>
+    <p><b>資料出處</b></p>
+    <ul><li>NASA Solar System Exploration(行星與衛星基本資料)</li><li>NASA/JPL Horizons(軌道資料)</li><li>NASA Exoplanet Archive(系外行星參數)</li><li>ESA Gaia(恆星距離)</li><li>相關任務:阿波羅、金星號、新視野號、卡西尼號、朱諾號、航海家 2 號、哈伯太空望遠鏡</li></ul>
+    </div>
+    <div class="en">
+    <h2>About "An Astronaut's Solar System Walk"</h2>
+    <p>A first-person walking tour. Every stop lands on a body you could really stand on: the Sun and the gas giants have no solid surface, so the Sun stop stays in a heat-shielded observation deck, and Jupiter, Saturn, Uranus and Neptune are visited from their moons (Europa, Enceladus, Miranda, Triton) with the giant planet hanging in the sky.</p>
+    <p><b>Controls</b>: after landing the astronaut keeps walking forward; drag the view to look around and steer; "Jump" uses the local gravity. Keyboard: hold S / ↓ to pause, A D / ← → turn, Q E look up/down, Space jump, N / P next / previous stop.</p>
+    <p><b>Honest labelling</b>: scenes are brick-style illustrations; distances are compressed; sky objects use their true angular diameter (objects under 1.5° are enlarged to 1.5° for visibility); exoplanet surfaces are inferred from size, temperature and host star. Generic brick style, unaffiliated with any brick brand.</p>
+    <p><b>Sources</b></p>
+    <ul><li>NASA Solar System Exploration (planet and moon data)</li><li>NASA/JPL Horizons (orbital data)</li><li>NASA Exoplanet Archive (exoplanet parameters)</li><li>ESA Gaia (stellar distances)</li><li>Missions: Apollo, Venera, New Horizons, Cassini, Juno, Voyager 2, Hubble Space Telescope</li></ul>
+    </div>
+    <p><a href="classic.html" style="color:#ffd97a"><span class="zh">另有第三人稱經典版(v1)→</span><span class="en">Also available: the classic third-person version (v1) →</span></a></p>
+    <button id="aboutClose"><span class="zh">關閉</span><span class="en">Close</span></button>
+  </div>
+</div>
+<div id="err"><div>無法載入 3D 函式庫(three.js r128,來源 cdnjs)。請確認網路連線後重新整理頁面。<br>Could not load the 3D library (three.js r128 from cdnjs). Please check your connection and reload.</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="document.getElementById('err').style.display='flex'"></script>
+<script>
+(() => {
+'use strict';
+if (typeof THREE === 'undefined'){ document.getElementById('err').style.display = 'flex'; return; }
+/* ============================================================ 基本工具 */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const D2R = Math.PI / 180, TAU = Math.PI * 2, AU2LY = 1 / 63241.077;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function rng(seed){ let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function hash(x, z){ let n = (x * 374761393 + z * 668265263) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967295; }
+function vnoise(x, z){ const xi = Math.floor(x), zi = Math.floor(z), fx = x - xi, fz = z - zi, sx = fx * fx * (3 - 2 * fx), sz = fz * fz * (3 - 2 * fz);
+  return lerp(lerp(hash(xi, zi), hash(xi + 1, zi), sx), lerp(hash(xi, zi + 1), hash(xi + 1, zi + 1), sx), sz); }
+const q2 = h => Math.round(h * 2) / 2;
+// 積木色盤
+const P = { red: 0xC91A09, orange: 0xFE8A18, blue: 0x0055BF, dorange: 0xA95500, yellow: 0xF2CD37, tan: 0xE4CD9E, white: 0xFFFFFF, dtan: 0x958A73,
+  black: 0x05131D, rbrown: 0x582A12, lgrey: 0xA0A5A9, dred: 0x720E0F, dgrey: 0x6C6E68, sky: 0x36AEBF, green: 0x237841, sblue: 0x6074A1 };
+const PC = h => '#' + h.toString(16).padStart(6, '0');
+const darken = (hex, k) => { const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255; return ((r * k) << 16) | ((g * k) << 8) | (b * k | 0); };
+const $ = id => document.getElementById(id);
+
+/* ============================================================ 馬賽克圓盤材質 */
+function mosaic(cells, aspect, painter){
+  const w = Math.round(cells * aspect), h = cells; const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d');
+  const draw = t => { c.clearRect(0, 0, w, h); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++){ const u = ((i + .5) / w * 2 - 1) * aspect, v = (j + .5) / h * 2 - 1; const col = painter(u, v, t, i, j); if (col != null){ c.fillStyle = PC(col); c.fillRect(i, j, 1, 1); } } };
+  draw(0); const tex = new THREE.CanvasTexture(cv); tex.magFilter = tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false; return { tex, draw, aspect };
+}
+const inDisc = (u, v, r) => u * u + v * v <= (r || 1) * (r || 1);
+function bandsPainter(cols, wobble){ return (u, v) => { if (!inDisc(u, v)) return null; const vv = v + (wobble || 0) * (vnoise(u * 4 + 9, v * 4) - .5); const i = clamp(Math.floor((vv + 1) / 2 * cols.length), 0, cols.length - 1); return cols[i]; }; }
+const PAINT = {
+  earth: (u, v, t) => { if (!inDisc(u, v)) return null; if (Math.abs(v) > .86) return P.white; const lon = Math.atan2(u, Math.sqrt(Math.max(0, 1 - u * u - v * v))) + t * .04;
+    const cl = vnoise(lon * 4 + t * .1 + 11, v * 4 + 2); if (cl > .7) return P.white; const n = vnoise(lon * 2.5 + 7, v * 3 + 3); if (n > .57) return n > .72 ? P.dtan : P.green; return P.blue; },
+  moon: (u, v) => { if (!inDisc(u, v)) return null; const n = vnoise(u * 5 + 3, v * 5 + 8); return n > .6 ? P.dgrey : P.lgrey; },
+  venus: (u, v) => inDisc(u, v) ? (vnoise(u * 4, v * 4 + 5) > .62 ? P.yellow : P.tan) : null,
+  mercury: (u, v) => { if (!inDisc(u, v)) return null; const n = vnoise(u * 6 + 1, v * 6 + 1); return n > .66 ? P.dgrey : n < .3 ? P.lgrey : P.dtan; },
+  mars: (u, v) => { if (!inDisc(u, v)) return null; if (Math.abs(v) > .84) return P.white; const n = vnoise(u * 3 + 4, v * 3 + 6); return n > .66 ? P.rbrown : n > .4 ? P.dorange : P.red; },
+  jupiter: (() => { const b = bandsPainter([P.tan, P.dtan, P.tan, P.orange, P.white, P.dorange, P.tan, P.rbrown, P.white, P.orange, P.tan, P.dtan], .12);
+    return (u, v) => { if (!inDisc(u, v)) return null; const du = (u + .3) / .3, dv = (v - .32) / .17; if (du * du + dv * dv < 1) return P.red; return b(u, v); }; })(),
+  saturn: (u, v) => { // 全貌:環為斜橢圓
+    const ringR = Math.sqrt(u * u + (v / .32) * (v / .32)); const onDisc = inDisc(u, v);
+    if (ringR > 1.25 && ringR < 2.35 && (!onDisc || v > 0)){ if (ringR > 1.95 && ringR < 2.05) return onDisc ? null : null; return Math.floor(ringR * 6) % 2 ? P.tan : P.dtan; }
+    if (!onDisc) return null; return bandsPainter([P.tan, P.yellow, P.tan, P.dtan, P.tan, P.yellow, P.tan], .06)(u, v); },
+  saturnEdge: (u, v) => { // 從土衛二看:環側視成一條線
+    if (Math.abs(v) < .045 && Math.abs(u) < 2.35 && Math.abs(u) > 1.2) return P.dtan; if (!inDisc(u, v)) return null; if (Math.abs(v) < .05) return P.rbrown;
+    return bandsPainter([P.tan, P.yellow, P.tan, P.dtan, P.tan, P.yellow, P.tan], .06)(u, v); },
+  uranus: (u, v) => { if (Math.abs(u) < .03 && Math.abs(v) > .53 && Math.abs(v) < .98) return P.lgrey; if (!inDisc(u, v, .5)) return null; return vnoise(u * 10, v * 10) > .72 ? P.white : P.sky; },
+  uranusFull: (u, v) => { const r = Math.sqrt((u / .3) * (u / .3) + v * v); if (r > .65 && r < 1 && (!inDisc(u, v, .5) || u < 0)) return Math.floor(r * 16) % 2 ? P.lgrey : P.dgrey; if (!inDisc(u, v, .5)) return null; return vnoise(u * 10, v * 10) > .72 ? P.white : P.sky; },
+  neptune: (u, v) => { if (!inDisc(u, v)) return null; const du = (u + .2) / .22, dv = (v - .3) / .12; if (du * du + dv * dv < 1) return P.black; if (Math.abs(v + .35) < .04 && u > -.5 && u < .3) return P.white; return bandsPainter([P.sblue, P.blue, P.blue, P.sblue, P.blue, P.blue, P.sblue], .1)(u, v); },
+  charon: (u, v) => { if (!inDisc(u, v)) return null; if (v < -.7) return P.rbrown; return vnoise(u * 4 + 2, v * 4) > .6 ? P.dgrey : P.lgrey; },
+  europa: (u, v) => { if (!inDisc(u, v)) return null; const l = Math.abs(Math.sin(u * 7 + v * 3 + vnoise(u * 3, v * 3) * 2)); return l < .12 ? P.rbrown : l < .2 ? P.tan : P.white; },
+  enceladus: (u, v) => { if (!inDisc(u, v)) return null; if (v > .55 && Math.abs(Math.sin(u * 9)) < .25) return P.sky; return vnoise(u * 6, v * 6) > .8 ? P.lgrey : P.white; },
+  miranda: (u, v) => { if (!inDisc(u, v)) return null; const n = hash(Math.floor(u * 3 + 5), Math.floor(v * 3 + 5)); return n > .6 ? P.white : n > .3 ? P.lgrey : P.dtan; },
+  triton: (u, v) => { if (!inDisc(u, v)) return null; const n = vnoise(u * 7, v * 7 + 3); if (v > .3 && n > .7) return P.dgrey; return n > .55 ? P.tan : P.white; },
+  pluto: (u, v) => { if (!inDisc(u, v)) return null; const x = (u - .1) / .5, y = -(v - .15) / .5; const hh = Math.pow(x * x + y * y - 1, 3) - x * x * y * y * y; if (hh < 0) return P.white; return vnoise(u * 4, v * 4) > .6 ? P.rbrown : P.tan; },
+  rocky: (u, v) => { if (!inDisc(u, v)) return null; const n = vnoise(u * 4 + 1, v * 4 + 1); return n > .6 ? P.rbrown : n > .35 ? P.dtan : P.dorange; },
+  rockyBlue: (u, v) => { if (!inDisc(u, v)) return null; const n = vnoise(u * 4 + 1, v * 4 + 1); return n > .62 ? P.sblue : n > .35 ? P.dtan : P.dgrey; },
+  rockyGreen: (u, v) => { if (!inDisc(u, v)) return null; const n = vnoise(u * 4 + 2, v * 4 + 5); if (Math.abs(v) > .85) return P.white; return n > .62 ? P.green : n > .4 ? P.dtan : P.sblue; },
+  sun: (u, v, t, i, j) => { if (!inDisc(u, v)) return null; const spots = [[-.35, .1, .07], [.25, -.3, .05], [.4, .35, .04], [-.1, -.55, .035]];
+    for (const [sx, sy, sr] of spots){ const d = Math.hypot(u - sx, v - sy); if (d < sr) return P.dred; if (d < sr * 1.7) return P.dorange; }
+    const g = hash(i * 7 + Math.floor(t * 3), j * 13 + Math.floor(t * 3) * 3); return g > .55 ? P.yellow : g > .2 ? P.orange : P.dorange; },
+  redDwarf: (u, v, t, i, j) => { if (!inDisc(u, v)) return null; const fl = Math.max(0, Math.sin(t * .9)) ** 30; const g = hash(i * 3 + Math.floor(t * 2), j * 5); if (fl > .3 && g > .5) return P.yellow; if (u * u + v * v < .25) return g > .5 ? P.orange : P.red; return g > .6 ? P.red : P.dred; },
+  star: (u, v) => { if (!inDisc(u, v)) return null; return u * u + v * v < .5 ? P.white : P.yellow; },
+  hotJupiter: (u, v) => { if (!inDisc(u, v)) return null; if (u > .35) return u > .7 ? P.black : P.dred; return bandsPainter([P.dred, P.red, P.orange, P.red, P.dorange, P.orange, P.red, P.dred], .1)(u, v); },
+  brownPlanet: (u, v) => inDisc(u, v) ? (vnoise(u * 4, v * 4) > .6 ? P.dtan : P.rbrown) : null,
+  greyPlanet: (u, v) => inDisc(u, v) ? (vnoise(u * 4 + 3, v * 4) > .6 ? P.dgrey : P.lgrey) : null
+};
+
+/* ============================================================ 站點資料 */
+const ST = [
+  { id: 'earth', name: '地球', en: 'Earth', type: '行星 · 出發點', au: 1, site: '落腳處:發射場', mode: 'walk', g: 1, tint: '#9fc8ff',
+    stats: [['重力', '1 g'], ['氣溫', '約 15°C'], ['平均半徑', '6,371 km'], ['一天', '23.9 小時']],
+    fact: '我們的出發點,太陽系中目前唯一已知有生命的星球。前方是積木火箭與發射塔架,按「前往下一站」就會倒數十秒後登艦。' },
+  { id: 'moon', name: '月球', en: 'Moon', type: '地球的衛星', au: 1, extra: '距地球 384,400 km', site: '落腳處:月表', mode: 'walk', g: .165, tint: '#dfe3ea',
+    stats: [['重力', '0.165 g'], ['溫度', '白天 127°C / 夜 −173°C'], ['天上的地球', '約 1.9°(月亮的 3.7 倍寬)'], ['距地球', '384,400 km']],
+    fact: '月球沒有風,腳印可以保留數百萬年。抬頭看:藍白色的地球掛在全黑的天空中,旁邊是登月艙和旗子,前方是你的夥伴。' },
+  { id: 'venus', name: '金星', en: 'Venus', type: '行星', au: .72, site: '落腳處:熔岩平原', mode: 'walk', g: .9, tint: '#ffb060',
+    stats: [['重力', '0.90 g'], ['表面溫度', '約 464°C'], ['氣壓', '約 92 大氣壓'], ['自轉', '243 天(逆向)']],
+    fact: '表面約 464°C,比水星還熱;濃厚的橙黃雲層讓你看不到太陽。旁邊的著陸器:真實的金星號著陸器只撐了約兩小時。' },
+  { id: 'mercury', name: '水星', en: 'Mercury', type: '行星', au: .39, site: '落腳處:隕石坑地面', mode: 'walk', g: .38, tint: '#ffe0b0',
+    stats: [['重力', '0.38 g'], ['溫度', '白天 430°C / 夜 −180°C'], ['天上的太陽', '約 1.4°(地球看到的 2.6 倍)'], ['公轉', '88 天']],
+    fact: '離太陽最近、體積最小,幾乎沒有大氣保溫。太陽特別大、光線刺眼、影子很長;地表有長條峭壁(皺脊),是行星冷卻收縮留下的痕跡。' },
+  { id: 'sun', name: '太陽', en: 'Sun', type: '恆星 · 折返點', au: 0, site: '隔熱觀景艙(不可下船)', mode: 'deck', g: 1, tint: '#ffcc55',
+    stats: [['表面溫度', '約 5,500°C'], ['半徑', '695,700 km(地球 109 倍)'], ['赤道自轉', '約 25 天'], ['光到地球', '8 分 20 秒']],
+    fact: '太陽是電漿球,沒有可站立的地面,所以我們留在隔熱觀景艙裡。窗外是沸騰的顆粒狀表面、黑子與日珥。' },
+  { id: 'mars', name: '火星', en: 'Mars', type: '行星', au: 1.52, site: '落腳處:紅色平原', mode: 'walk', g: .38, tint: '#ffb08a',
+    stats: [['重力', '0.38 g'], ['平均溫度', '約 −63°C'], ['天上的太陽', '約 0.35°(地球看到的 0.65 倍)'], ['奧林帕斯山', '高約 22 km']],
+    fact: '橘粉色的天空、較小的太陽,遠處是太陽系最高的火山奧林帕斯山(坡度很緩)。塵旋風會在平原上掃過,探測車在旁邊工作。' },
+  { id: 'europa', name: '木星 · 木衛二', en: 'Jupiter · Europa', type: '行星的衛星', au: 5.2, site: '落腳處:木衛二冰面,木星在天上', mode: 'walk', g: .134, tint: '#ffcf9a',
+    stats: [['重力', '0.134 g'], ['溫度', '約 −160°C'], ['天上的木星', '約 12°(月亮的 24 倍寬)'], ['木衛二半徑', '1,561 km']],
+    fact: '木星沒有固態地表,所以我們降落在冰衛星木衛二。冰面布滿紅褐色裂縫,冰殼下可能有全球海洋;木星的輻射極強,真實中人類無法久留。' },
+  { id: 'enceladus', name: '土星 · 土衛二', en: 'Saturn · Enceladus', type: '行星的衛星', au: 9.58, site: '落腳處:土衛二冰面,土星在天上', mode: 'walk', g: .0115, tint: '#ffe8b8',
+    stats: [['重力', '0.0115 g'], ['溫度', '約 −198°C'], ['天上的土星', '約 28°'], ['土衛二半徑', '252 km']],
+    fact: '土衛二南極的藍綠色「虎紋」裂縫噴出冰泉,形成土星的 E 環。因為我們站在環平面上,土星環幾乎側看成一條細線。重力極低,跳一下會飛很高很久。' },
+  { id: 'miranda', name: '天王星 · 天衛五', en: 'Uranus · Miranda', type: '行星的衛星', au: 19.2, site: '落腳處:天衛五,天王星在天上', mode: 'walk', g: .008, tint: '#c8f0f4',
+    stats: [['重力', '0.008 g'], ['溫度', '約 −187°C'], ['天上的天王星', '約 22°'], ['維羅納斷崖', '高約 20 km']],
+    fact: '天衛五的拼貼狀地形像是被重新拼裝過;維羅納斷崖高約 20 公里,是太陽系最高的斷崖之一。天王星躺著自轉,環側看成一條線。' },
+  { id: 'triton', name: '海王星 · 海衛一', en: 'Neptune · Triton', type: '行星的衛星', au: 30.1, site: '落腳處:海衛一,海王星在天上', mode: 'walk', g: .079, tint: '#a8b8ff',
+    stats: [['重力', '0.079 g'], ['溫度', '約 −235°C'], ['天上的海王星', '約 8°'], ['公轉', '5.88 天(逆向)']],
+    fact: '海衛一是太陽系唯一逆向公轉的大衛星,可能是被捕獲的柯伊伯帶天體。哈密瓜皮狀的氮冰地形上,暗色的氮氣噴柱(冰火山)直衝天際。' },
+  { id: 'pluto', name: '冥王星', en: 'Pluto', type: '矮行星', au: 39.5, site: '落腳處:心形氮冰平原', mode: 'walk', g: .063, tint: '#e8dccb',
+    stats: [['重力', '0.063 g'], ['溫度', '約 −229°C'], ['天上的冥衛一', '約 3.5°(固定不動)'], ['山脈', '高約 3.5 km']],
+    fact: '2015 年新視野號拍到心形的氮冰平原(史普尼克平原),表面有多邊形紋路,旁邊是紅褐色的水冰山脈。冥王星與冥衛一互相潮汐鎖定,冥衛一固定掛在天上不升不落。' },
+  { id: 'proxima-b', name: '比鄰星 b', en: 'Proxima Centauri b', type: '系外行星', ly: 4.24, site: '落腳處:推估的岩石地表(示意)', mode: 'walk', g: 1, tint: '#ff9a7a',
+    stats: [['重力', '未測,示意約 1 g'], ['平衡溫度', '約 234 K(−39°C)'], ['天上的比鄰星', '約 1.7°(太陽的 3 倍寬)'], ['距離', '4.24 光年']],
+    fact: '離我們最近的已知系外行星。天上是暗紅色的比鄰星(閃焰星),遠處還有 α 半人馬 A、B 兩顆亮星。若被潮汐鎖定,則一側永遠白天。' },
+  { id: 'trappist-1e', name: 'TRAPPIST-1 e', en: 'TRAPPIST-1 e', type: '系外行星', ly: 40.7, site: '落腳處:推估的岩石地表(示意)', mode: 'walk', g: .8, tint: '#ff9d7d',
+    stats: [['重力', '約 0.8 g'], ['平衡溫度', '約 −22°C'], ['天上的主星', '約 2°'], ['半徑', '0.92 倍地球']],
+    fact: '七顆行星之一,大小約 0.92 倍地球,位於可能有液態水的區域附近。鄰近行星在天空中看起來比我們的月亮大很多。' },
+  { id: '51-peg-b', name: '飛馬座 51 b', en: '51 Pegasi b', type: '系外行星 · 熱木星', ly: 50.9, site: '觀景艙:熱木星上空(不可下船)', mode: 'deck', g: 1, tint: '#ffcf9a',
+    stats: [['溫度', '約 1,200 K'], ['公轉', '4.23 天(0.052 AU)'], ['質量下限', '約 0.47 倍木星'], ['距離', '約 51 光年']],
+    fact: '1995 年發現,是第一顆確認繞類太陽恆星運行的系外行星,「熱木星」一詞由此而來;發現者獲 2019 年諾貝爾物理學獎。' },
+  { id: 'kepler-452b', name: '克卜勒-452 b', en: 'Kepler-452 b', type: '系外行星', ly: 1400, site: '落腳處:推估的岩石地表(示意)', mode: 'walk', g: 1.6, tint: '#fff0c8',
+    stats: [['重力', '估計約 1.3–2 g'], ['公轉', '384.8 天'], ['半徑', '約 1.6 倍地球'], ['距離', '約 1,400 光年']],
+    fact: '2015 年發現,繞著類太陽恆星、公轉週期約 385 天,常被稱為「地球的表親」。重力較大,走起來比較沉重。' },
+  { id: 'sweeps-11', name: 'SWEEPS-11', en: 'SWEEPS-11', type: '系外行星 · 熱木星', ly: 27700, site: '觀景艙:熱木星上空(不可下船)', mode: 'deck', g: 1, tint: '#ffb27a',
+    stats: [['質量', '約 9.7 倍木星'], ['公轉', '約 1.8 天'], ['位置', '銀河核心方向'], ['距離', '約 27,700 光年']],
+    fact: '哈伯望遠鏡在銀河核心方向找到的行星,是已確認系外行星中最遠的之一。窗外是密集的銀河核心星場。' },
+  { id: 'finale', name: '銀河系', en: 'Milky Way', type: '結尾 · 從船窗看出去', ly: 27700, site: '太空船駕駛艙', mode: 'finale', g: 1, tint: '#cfd8ff',
+    stats: [['銀河系直徑', '約 10 萬光年'], ['太陽距核心', '約 26,000 光年'], ['你飛了', '約 27,700 光年'], ['造訪站點', '16 站']],
+    fact: '你剛才飛越了約 27,700 光年,而這只是銀河系直徑(約 10 萬光年)的一小段。' }
+];
+const EN = {
+  earth: { type: 'Planet · Departure', site: 'Landing site: launch pad', stats: [['Gravity', '1 g'], ['Temperature', 'about 15°C'], ['Mean radius', '6,371 km'], ['Day length', '23.9 hours']],
+    fact: 'Our starting point, the only world in the Solar System known to harbour life. Ahead is a brick rocket and its launch tower; press "Next stop" to board.' },
+  moon: { type: "Earth's moon", extra: '384,400 km from Earth', site: 'Landing site: lunar surface', stats: [['Gravity', '0.165 g'], ['Temperature', '127°C day / −173°C night'], ['Earth in the sky', 'about 1.9° (3.7× wider than our Moon)'], ['From Earth', '384,400 km']],
+    fact: 'There is no wind on the Moon, so footprints can last millions of years. Look up: the blue-and-white Earth hangs in a pitch-black sky. Beside you are the lunar module and a flag, and your partner walks ahead.' },
+  venus: { type: 'Planet', site: 'Landing site: lava plain', stats: [['Gravity', '0.90 g'], ['Surface temperature', 'about 464°C'], ['Pressure', 'about 92 atmospheres'], ['Rotation', '243 days (retrograde)']],
+    fact: 'At about 464°C the surface is hotter than Mercury, and the thick orange clouds hide the Sun completely. The lander beside you: the real Venera landers survived only about two hours.' },
+  mercury: { type: 'Planet', site: 'Landing site: cratered ground', stats: [['Gravity', '0.38 g'], ['Temperature', '430°C day / −180°C night'], ['Sun in the sky', 'about 1.4° (2.6× what Earth sees)'], ['Orbit', '88 days']],
+    fact: 'The closest planet to the Sun and the smallest, with almost no atmosphere to hold heat. The Sun looks huge, the light is harsh and shadows are long; the long scarps are wrinkles left as the planet cooled and shrank.' },
+  sun: { type: 'Star · Turning point', site: 'Heat-shielded observation deck (no disembarking)', stats: [['Surface temperature', 'about 5,500°C'], ['Radius', '695,700 km (109× Earth)'], ['Equatorial rotation', 'about 25 days'], ['Light to Earth', '8 min 20 s']],
+    fact: 'The Sun is a ball of plasma with no surface to stand on, so we stay inside the heat-shielded deck. Outside: a boiling granular surface, sunspots and prominences.' },
+  mars: { type: 'Planet', site: 'Landing site: red plain', stats: [['Gravity', '0.38 g'], ['Mean temperature', 'about −63°C'], ['Sun in the sky', 'about 0.35° (0.65× what Earth sees)'], ['Olympus Mons', 'about 22 km high']],
+    fact: 'A pinkish-orange sky and a smaller Sun. In the distance is Olympus Mons, the tallest volcano in the Solar System, with very gentle slopes. Dust devils sweep across the plain while a rover works nearby.' },
+  europa: { type: 'Moon of a planet', site: "Landing site: Europa's ice, Jupiter overhead", stats: [['Gravity', '0.134 g'], ['Temperature', 'about −160°C'], ['Jupiter in the sky', 'about 12° (24× wider than our Moon)'], ["Europa's radius", '1,561 km']],
+    fact: "Jupiter has no solid surface, so we landed on its icy moon Europa. The ice is criss-crossed by reddish-brown cracks and may hide a global ocean; Jupiter's radiation is so intense that real humans could not stay long." },
+  enceladus: { type: 'Moon of a planet', site: "Landing site: Enceladus' ice, Saturn overhead", stats: [['Gravity', '0.0115 g'], ['Temperature', 'about −198°C'], ['Saturn in the sky', 'about 28°'], ["Enceladus' radius", '252 km']],
+    fact: "Blue-green \"tiger stripe\" fractures at the south pole vent ice geysers that feed Saturn's E ring. Because we stand in the ring plane, the rings appear edge-on as a thin line. Gravity is tiny: one jump sends you high and slow." },
+  miranda: { type: 'Moon of a planet', site: 'Landing site: Miranda, Uranus overhead', stats: [['Gravity', '0.008 g'], ['Temperature', 'about −187°C'], ['Uranus in the sky', 'about 22°'], ['Verona Rupes', 'about 20 km high']],
+    fact: "Miranda's patchwork terrain looks as if it was taken apart and reassembled. Verona Rupes, about 20 km tall, is one of the highest cliffs in the Solar System. Uranus spins on its side, so its rings appear as a line." },
+  triton: { type: 'Moon of a planet', site: 'Landing site: Triton, Neptune overhead', stats: [['Gravity', '0.079 g'], ['Temperature', 'about −235°C'], ['Neptune in the sky', 'about 8°'], ['Orbit', '5.88 days (retrograde)']],
+    fact: 'Triton is the only large moon that orbits backwards and may be a captured Kuiper Belt object. Across its cantaloupe-skin nitrogen ice, dark nitrogen plumes (ice volcanoes) shoot into the sky.' },
+  pluto: { type: 'Dwarf planet', site: 'Landing site: the heart-shaped nitrogen plain', stats: [['Gravity', '0.063 g'], ['Temperature', 'about −229°C'], ['Charon in the sky', 'about 3.5° (never moves)'], ['Mountains', 'about 3.5 km high']],
+    fact: 'In 2015 New Horizons photographed the heart-shaped nitrogen-ice plain (Sputnik Planitia), patterned with polygons and bordered by reddish water-ice mountains. Pluto and Charon are tidally locked, so Charon hangs fixed in the sky.' },
+  'proxima-b': { type: 'Exoplanet', site: 'Landing site: estimated rocky surface (illustrative)', stats: [['Gravity', 'unmeasured; shown as about 1 g'], ['Equilibrium temperature', 'about 234 K (−39°C)'], ['Proxima in the sky', 'about 1.7° (3× wider than our Sun)'], ['Distance', '4.24 light-years']],
+    fact: 'The closest known exoplanet. Overhead is the dim red Proxima Centauri, a flare star; farther off shine Alpha Centauri A and B. If the planet is tidally locked, one side is in permanent daylight.' },
+  'trappist-1e': { type: 'Exoplanet', site: 'Landing site: estimated rocky surface (illustrative)', stats: [['Gravity', 'about 0.8 g'], ['Equilibrium temperature', 'about −22°C'], ['Host star in the sky', 'about 2°'], ['Radius', '0.92× Earth']],
+    fact: "One of seven planets, about 0.92 times Earth's size, near the zone where liquid water might exist. Neighbouring planets look far larger in the sky than our Moon." },
+  '51-peg-b': { type: 'Exoplanet · Hot Jupiter', site: 'Observation deck above a hot Jupiter (no disembarking)', stats: [['Temperature', 'about 1,200 K'], ['Orbit', '4.23 days (0.052 AU)'], ['Minimum mass', 'about 0.47× Jupiter'], ['Distance', 'about 51 light-years']],
+    fact: 'Discovered in 1995, the first confirmed exoplanet around a Sun-like star and the origin of the term "hot Jupiter"; its discoverers won the 2019 Nobel Prize in Physics.' },
+  'kepler-452b': { type: 'Exoplanet', site: 'Landing site: estimated rocky surface (illustrative)', stats: [['Gravity', 'estimated 1.3–2 g'], ['Orbit', '384.8 days'], ['Radius', 'about 1.6× Earth'], ['Distance', 'about 1,400 light-years']],
+    fact: 'Discovered in 2015, orbiting a Sun-like star about every 385 days; often called "Earth\'s cousin". The stronger gravity makes every step heavier.' },
+  'sweeps-11': { type: 'Exoplanet · Hot Jupiter', site: 'Observation deck above a hot Jupiter (no disembarking)', stats: [['Mass', 'about 9.7× Jupiter'], ['Orbit', 'about 1.8 days'], ['Location', 'toward the Galactic centre'], ['Distance', 'about 27,700 light-years']],
+    fact: 'Found by the Hubble Space Telescope toward the Galactic centre, one of the most distant confirmed exoplanets. Outside the window is the dense star field of the Galactic core.' },
+  finale: { type: "Finale · From the ship's window", site: 'Spacecraft cockpit', stats: [['Milky Way diameter', 'about 100,000 light-years'], ['Sun to Galactic centre', 'about 26,000 light-years'], ['You travelled', 'about 27,700 light-years'], ['Stops visited', '16']],
+    fact: "You just crossed about 27,700 light-years, and that is only a small slice of the Milky Way's roughly 100,000-light-year diameter." }
+};
+const UI = {
+  zh: { title: '太空人的太陽系之旅 · 步行版', fromSun: '距太陽', fromEarth: '距地球', sunLight: '光到地球 8 分 20 秒', moonDist: '距地球 384,400 km', ly: '光年', lookUp: '看向天空', lookDown: '看向地面', jump: '跳', info: '資訊', prev: '← 上一站', next: '前往下一站 →', toGalaxy: '飛向銀河系 →', restart: '重新出發', flying: '飛行中…', photo: '拍照',
+    heading: '前往', back: '返回', landed: '已降落', arrivedDeck: n => `抵達 ${n} 觀景艙`, solNote: '場景為積木風格示意圖;天空天體大小依真實角直徑估算', exoNote: '依數據推估的示意圖 — 系外行星尚無實拍影像,地表為推估', deckNote: ';此天體無固態地表,停留在觀景艙', finNote: '系外行星位置為示意;距離依 NASA Exoplanet Archive 近似值',
+    gotoStop: (i, n) => `跳到第 ${i} 站:${n}`, lblSun: '太陽系(距銀河核心約 26,000 光年)', lblSw: 'SWEEPS-11(約 27,700 光年)', lblNear: '比鄰星 b · TRAPPIST-1 · 飛馬座 51 b · 克卜勒-452 b<br>(皆在太陽附近,位置示意)', big: '你飛了約 27,700 光年', bigSub: '這只是銀河系直徑(約 10 萬光年)的一小段', siteStrip: '落腳處:' },
+  en: { title: "An Astronaut's Solar System Walk", fromSun: 'from the Sun', fromEarth: 'from Earth', sunLight: 'Light reaches Earth in 8 min 20 s', moonDist: '384,400 km from Earth', ly: 'ly', lookUp: 'Look up', lookDown: 'Look down', jump: 'Jump', info: 'Info', prev: '← Previous', next: 'Next stop →', toGalaxy: 'To the Milky Way →', restart: 'Start again', flying: 'In flight…', photo: 'Photo',
+    heading: 'Heading to', back: 'Back to', landed: 'Landed on', arrivedDeck: n => `Arrived: ${n} observation deck`, solNote: 'Brick-style illustration; sky objects sized by true angular diameter', exoNote: 'Illustration inferred from data — no real images of exoplanets exist; the surface is an estimate', deckNote: '; no solid surface, so we stay on the deck', finNote: 'Exoplanet positions are illustrative; distances are NASA Exoplanet Archive approximations',
+    gotoStop: (i, n) => `Go to stop ${i}: ${n}`, lblSun: 'Solar System (about 26,000 ly from the centre)', lblSw: 'SWEEPS-11 (about 27,700 ly)', lblNear: 'Proxima b · TRAPPIST-1 · 51 Peg b · Kepler-452 b<br>(all near the Sun; positions illustrative)', big: 'You travelled about 27,700 light-years', bigSub: "only a small slice of the Milky Way's ~100,000-light-year diameter", siteStrip: 'Landing site: ' }
+};
+let LANG = 'zh';
+try { const q = new URLSearchParams(location.search).get('lang'); LANG = q === 'en' || q === 'zh' ? q : (localStorage.getItem('aj-lang') || (/^zh/i.test(navigator.language) ? 'zh' : 'en')); } catch (e) {}
+const T = () => UI[LANG];
+const L = (st, f) => LANG === 'en' && EN[st.id] && EN[st.id][f] != null ? EN[st.id][f] : st[f];
+const nameOf = st => LANG === 'en' ? st.en : st.name;
+const distLy = st => st.au != null ? Math.max(st.au * AU2LY, 1e-7) : st.ly;
+const distText = st => { const en = LANG === 'en'; const ex = L(st, 'extra'); if (st.au != null){ const d = st.au === 0 ? (en ? 'At the Sun (turning point)' : '距太陽 0(折返點)') : (en ? `${st.au} AU from the Sun` : `距太陽 ${st.au} AU`); return d + (ex ? ' · ' + ex : ''); }
+  if (st.mode === 'finale') return en ? 'about 27,700 light-years from Earth' : '從地球出發約 27,700 光年'; const v = st.ly >= 1000 ? (en ? 'about ' : '約 ') + st.ly.toLocaleString('en-US') : st.ly; return en ? `${v} light-years from Earth` : `距地球 ${v} 光年`; };
+
+/* ============================================================ 地形定義 */
+function craterField(seed, n, area, rmin, rmax, depth){
+  const r = rng(seed), cs = []; for (let i = 0; i < n; i++) cs.push([(r() - .5) * area, (r() - .5) * area, rmin + r() * (rmax - rmin), depth * (.6 + r() * .8)]);
+  return (x, z) => { let h = 0; for (const [cx, cz, cr, cd] of cs){ const dx = x - cx, dz = z - cz; const d2 = dx * dx + dz * dz; if (d2 > cr * cr * 1.7) continue; const d = Math.sqrt(d2) / cr;
+    if (d < 1) h -= cd * (1 - d * d); const rim = 1 - Math.abs(d - 1) / .3; if (rim > 0) h += cd * .45 * rim; } return h; };
+}
+const moonCr = craterField(1, 36, 140, 1.5, 9, 1.4), mercCr = craterField(2, 60, 140, 1, 8, 1.6), marsCr = craterField(3, 10, 140, 2, 6, .6), rockCr = craterField(4, 20, 140, 1.5, 6, .9);
+const inR = (x, z, r) => x * x + z * z < r * r;
+const TERRAIN = {
+  earth: { h: (x, z) => inR(x, z, 14) ? 0 : x > 46 ? -1 : q2(vnoise(x * .12, z * .12) * 1.2 - .3), c: (x, z, h) => inR(x, z, 14) ? ((Math.floor(x / 2) + Math.floor(z / 2)) % 2 ? P.lgrey : P.dgrey) : x > 46 ? P.blue : (vnoise(x * .3, z * .3) > .6 ? P.green : darken(P.green, .8)) },
+  moon: { h: (x, z) => q2(moonCr(x, z) + vnoise(x * .15, z * .15) * .8), c: (x, z, h) => (h < -.4 ? P.dgrey : vnoise(x * .4 + 3, z * .4) > .68 ? P.dgrey : P.lgrey) },
+  venus: { h: (x, z) => q2(Math.floor(vnoise(x * .08, z * .08) * 3) * .5 + (vnoise(x * .5, z * .5) > .85 ? .5 : 0)), c: (x, z, h) => h > .9 ? P.dorange : (vnoise(x * .25 + 5, z * .25) > .55 ? P.rbrown : P.dorange) },
+  mercury: { h: (x, z) => q2(mercCr(x, z) + (x > 18 && x < 30 ? (x - 18) * .3 : x >= 30 ? 3.6 : 0) + vnoise(x * .2, z * .2) * .4), c: (x, z, h) => (vnoise(x * .3 + 1, z * .3) > .6 ? P.dtan : h > 2 ? P.dgrey : P.dgrey) },
+  mars: { h: (x, z) => q2(marsCr(x, z) + Math.sin(x * .25 + vnoise(x * .1, z * .1) * 3) * .5 + vnoise(x * .3, z * .3) * .6), c: (x, z, h) => { const n = vnoise(x * .2 + 9, z * .2); return n > .7 ? P.rbrown : h > .7 ? P.dorange : P.red; } },
+  europa: { h: (x, z) => { const l = Math.abs(Math.sin(x * .18 + vnoise(x * .05, z * .05) * 4 + z * .07)); return q2((l < .08 ? -.5 : l < .16 ? .5 : 0) + vnoise(x * .2, z * .2) * .5); }, c: (x, z, h) => { const l = Math.abs(Math.sin(x * .18 + vnoise(x * .05, z * .05) * 4 + z * .07)); return l < .08 ? P.rbrown : l < .16 ? P.tan : P.white; } },
+  enceladus: { h: (x, z) => { const s = Math.abs(Math.sin(z * .12 + vnoise(x * .06, z * .06) * 2)); return q2((s < .06 ? -.5 : 0) + vnoise(x * .18, z * .18) * .8); }, c: (x, z, h) => { const s = Math.abs(Math.sin(z * .12 + vnoise(x * .06, z * .06) * 2)); return s < .06 ? P.sky : vnoise(x * .3, z * .3) > .78 ? P.lgrey : P.white; } },
+  miranda: { h: (x, z) => q2((z < -26 ? Math.min(12, (-26 - z) * 1.5) : 0) + Math.floor(hash(Math.floor(x / 9), Math.floor(z / 9)) * 3) * .5 + vnoise(x * .3, z * .3) * .5), c: (x, z, h) => { const n = hash(Math.floor(x / 9), Math.floor(z / 9)); return z < -26 ? (h > 6 ? P.lgrey : P.dgrey) : n > .6 ? P.white : n > .3 ? P.lgrey : P.dtan; } },
+  triton: { h: (x, z) => q2(Math.round(vnoise(x * .35, z * .35) * 2) * .5 + vnoise(x * .1, z * .1) * .5), c: (x, z, h) => { const n = vnoise(x * .15 + 4, z * .15); return n > .72 && Math.abs(Math.sin(x * .3)) > .8 ? P.dgrey : h > .7 ? P.white : P.tan; } },
+  pluto: { h: (x, z) => x > 26 ? q2(Math.min(7, (x - 26) * .6) + vnoise(x * .3, z * .3) * 1.5) : q2(vnoise(x * .1, z * .1) * .4), c: (x, z, h) => { if (x > 26) return P.rbrown; const n = vnoise(x * .18 + 2, z * .18 + 2); return n > .48 && n < .53 ? P.dtan : P.white; } },
+  'proxima-b': { h: (x, z) => q2(rockCr(x, z) + vnoise(x * .2, z * .2) * 1.2), c: (x, z, h) => vnoise(x * .3, z * .3) > .58 ? P.dred : P.rbrown },
+  'trappist-1e': { h: (x, z) => { const n = vnoise(x * .1, z * .1); return n < .3 ? -.5 : q2(rockCr(x * .7, z * .7) * .5 + n * 1.5); }, c: (x, z, h) => vnoise(x * .1, z * .1) < .3 ? P.blue : vnoise(x * .3 + 1, z * .3) > .6 ? P.dgrey : P.dtan },
+  'kepler-452b': { h: (x, z) => q2(vnoise(x * .12, z * .12) * 2 + vnoise(x * .4, z * .4) * .5), c: (x, z, h) => { const n = vnoise(x * .25 + 6, z * .25); return h < .3 ? P.sblue : n > .55 ? P.green : P.dtan; } },
+  deck: { h: (x, z) => (Math.abs(x) <= 7 && Math.abs(z) <= 5) ? 0 : null, c: (x, z) => ((Math.floor(x) + Math.floor(z)) % 2 ? P.lgrey : P.dgrey) }
+};
+
+/* ============================================================ 渲染器與場景 */
+const canvas = $('gl');
+let renderer; try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' }); } catch (e){ $('err').style.display = 'flex'; $('err').firstElementChild.textContent = '此裝置或瀏覽器不支援 WebGL。'; return; }
+renderer.setPixelRatio(1);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(62, 1, .05, 4000);
+const rig = new THREE.Object3D(); rig.add(camera); scene.add(rig);
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.1); scene.add(sunLight); scene.add(sunLight.target);
+const amb = new THREE.AmbientLight(0xffffff, .35); scene.add(amb);
+const world = new THREE.Group(); scene.add(world);        // 地形、道具、夥伴、粒子
+const skyG = new THREE.Group(); scene.add(skyG);          // 星空、天上的天體
+const cockpit = new THREE.Group(); camera.add(cockpit);   // 過場駕駛艙(相機空間)
+let W = 0, H = 0, RES = 1 / 3, GRID = 76;
+const isMobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) || Math.min(innerWidth, innerHeight) < 500;
+if (isMobile){ GRID = 56; RES = 1 / 3; }
+function resize(){ W = innerWidth; H = innerHeight; renderer.setSize(Math.max(160, Math.round(W * RES)), Math.max(120, Math.round(H * RES)), false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize);
+
+const matCache = {};
+const mat = (hex, opts) => { const k = hex + (opts ? JSON.stringify(opts) : ''); return matCache[k] || (matCache[k] = new THREE.MeshLambertMaterial(Object.assign({ color: hex }, opts || {}))); };
+const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+function box(parent, x, y, z, w, h, d, hex, opts){ const m = new THREE.Mesh(boxGeo, mat(hex, opts)); m.position.set(x, y + h / 2, z); m.scale.set(w, h, d); parent.add(m); return m; }
+const studGeo = new THREE.CylinderGeometry(.28, .28, .14, 8);
+function stud(parent, x, y, z, hex){ const m = new THREE.Mesh(studGeo, mat(hex)); m.position.set(x, y + .07, z); parent.add(m); return m; }
+
+/* ============================================================ 積木地形(InstancedMesh) */
+const BASE = -5;
+let blocks, studs, cellIndex = new Map(), gridCenter = [1e9, 1e9], terrain = null;
+const dummy = new THREE.Object3D(), colTmp = new THREE.Color();
+const footprints = new Map(); // "x,z" -> true
+function buildInstances(){
+  if (blocks){ world.remove(blocks); world.remove(studs); blocks.dispose(); studs.dispose(); }
+  const g = new THREE.BoxGeometry(1, 1, 1); g.translate(0, .5, 0);
+  blocks = new THREE.InstancedMesh(g, new THREE.MeshLambertMaterial({ color: 0xffffff }), GRID * GRID);
+  studs = new THREE.InstancedMesh(new THREE.CylinderGeometry(.27, .27, .16, 6), new THREE.MeshLambertMaterial({ color: 0xffffff }), GRID * GRID);
+  blocks.frustumCulled = false; studs.frustumCulled = false; world.add(blocks); world.add(studs); gridCenter = [1e9, 1e9];
+}
+function cellColor(x, z, h){ let c = terrain.c(x, z, h); if (footprints.has(x + ',' + z)) c = darken(c, .62); return c; }
+function rebuildGrid(cx, cz){
+  gridCenter = [cx, cz]; cellIndex.clear(); const half = GRID >> 1; let i = 0;
+  for (let gz = 0; gz < GRID; gz++) for (let gx = 0; gx < GRID; gx++, i++){
+    const x = cx - half + gx, z = cz - half + gz; const h = terrain.h(x, z);
+    if (h == null){ dummy.position.set(0, -999, 0); dummy.scale.set(0, 0, 0); dummy.updateMatrix(); blocks.setMatrixAt(i, dummy.matrix); studs.setMatrixAt(i, dummy.matrix); continue; }
+    cellIndex.set(x + ',' + z, i);
+    dummy.position.set(x + .5, BASE, z + .5); dummy.scale.set(1, h - BASE, 1); dummy.updateMatrix(); blocks.setMatrixAt(i, dummy.matrix);
+    dummy.position.set(x + .5, h + .08, z + .5); dummy.scale.set(1, 1, 1); dummy.updateMatrix(); studs.setMatrixAt(i, dummy.matrix);
+    colTmp.setHex(cellColor(x, z, h)); blocks.setColorAt(i, colTmp); studs.setColorAt(i, colTmp);
+  }
+  blocks.instanceMatrix.needsUpdate = true; studs.instanceMatrix.needsUpdate = true; blocks.instanceColor.needsUpdate = true; studs.instanceColor.needsUpdate = true;
+}
+function groundAt(x, z){ const h = terrain ? terrain.h(Math.floor(x), Math.floor(z)) : 0; return h == null ? 0 : h; }
+function stamp(x, z){ // 腳印
+  if (!cur || cur.mode !== 'walk') return; const k = Math.floor(x) + ',' + Math.floor(z); if (footprints.has(k)) return; footprints.set(k, performance.now());
+  if (footprints.size > 600){ const first = footprints.keys().next().value; footprints.delete(first); }
+  const i = cellIndex.get(k); if (i != null){ const h = terrain.h(Math.floor(x), Math.floor(z)); colTmp.setHex(cellColor(Math.floor(x), Math.floor(z), h)); blocks.setColorAt(i, colTmp); studs.setColorAt(i, colTmp); blocks.instanceColor.needsUpdate = true; studs.instanceColor.needsUpdate = true; }
+}
+
+/* ============================================================ 天空 */
+let stars = null, skyBodies = [];
+function makeStars(n, dense){
+  const r = rng(dense ? 55 : 42), pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++){ let th = r() * TAU, ph = Math.acos(2 * r() - 1); if (dense && r() < .7){ ph = Math.PI / 2 + (r() - .5) * .6; th = (r() - .5) * 1.6 - Math.PI / 2; }
+    const R = 1800; pos[i * 3] = R * Math.sin(ph) * Math.cos(th); pos[i * 3 + 1] = R * Math.cos(ph); pos[i * 3 + 2] = R * Math.sin(ph) * Math.sin(th);
+    const t = r(); const c = t < .15 ? [1, .85, .6] : t < .3 ? [.7, .8, 1] : [1, 1, 1]; const b = .5 + r() * .5; col[i * 3] = c[0] * b; col[i * 3 + 1] = c[1] * b; col[i * 3 + 2] = c[2] * b; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return new THREE.Points(geo, new THREE.PointsMaterial({ size: dense ? 2 : 2.2, sizeAttenuation: false, vertexColors: true, fog: false }));
+}
+// 天上的天體:依角直徑放置在遠處的馬賽克 Sprite
+function skyBody(painterKey, angDeg, azDeg, altDeg, opts){
+  opts = opts || {}; const ang = Math.max(angDeg, 1.5); const cells = clamp(Math.round(ang * (opts.cellsPerDeg || 2.6)), 10, 72);
+  const mz = mosaic(cells, opts.aspect || 1, PAINT[painterKey]); const D = 900; const size = 2 * D * Math.tan(ang / 2 * D2R) * (opts.discScale || 1);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: mz.tex, fog: false, transparent: true, alphaTest: .5 }));
+  sp.scale.set(size * mz.aspect, size, 1); const a = azDeg * D2R, e = altDeg * D2R;
+  sp.position.set(-Math.sin(a) * Math.cos(e) * D, Math.sin(e) * D, -Math.cos(a) * Math.cos(e) * D);
+  sp.userData = { mz, animate: opts.animate, az: azDeg, alt: altDeg, drift: opts.drift }; skyG.add(sp); skyBodies.push(sp); return sp;
+}
+function clearGroup(g){ while (g.children.length){ const c = g.children.pop(); c.traverse && c.traverse(o => { if (o.geometry && o.geometry !== boxGeo && o.geometry !== studGeo) o.geometry.dispose(); if (o.material && o.material.map && !o.isInstancedMesh) o.material.map.dispose(); }); } }
+function buildSky(st){
+  clearGroup(skyG); skyBodies = []; stars = null;
+  const black = 0x02030a; let bg = black, fog = [black, 20, GRID * .48], star = true, lightDir = [.5, .8, .3], lightI = 1.1, ambI = .32;
+  switch (st.id){
+    case 'earth': bg = 0x6fc3d8; fog = [0x8fd0e0, 30, GRID * .5]; star = false; skyBody('star', 2.2, -40, 26); lightI = 1.2; ambI = .5;
+      for (let i = 0; i < 6; i++){ const sp = skyBody('moon', 5 + hash(i, 1) * 5, -120 + i * 48, 10 + hash(i, 2) * 10, { discScale: 1 }); sp.material.map = mosaic(10, 2.2, (u, v) => (u * u / 4 + v * v < 1 && vnoise(u * 2 + i, v * 2) > .3) ? P.white : null).tex; sp.scale.x *= 2.2; sp.userData.drift = .0015; } break;
+    case 'moon': skyBody('earth', 1.9, 18, 21, { animate: true }); lightDir = [.6, .5, .4]; ambI = .22; break;
+    case 'venus': bg = 0xB86A16; fog = [0xC97A20, 2, 34]; star = false; lightDir = [0, 1, 0]; lightI = .7; ambI = .55; break;
+    case 'mercury': skyBody('star', 1.4, -28, 24); lightDir = [.55, .55, .3]; lightI = 1.6; ambI = .12; break;
+    case 'sun': skyBody('sun', 72, 0, 12, { animate: true, cellsPerDeg: 1 }); lightDir = [0, .3, -1]; lightI = 1.4; ambI = .5; break;
+    case 'mars': bg = 0xC98A6B; fog = [0xC98A6B, 25, GRID * .5]; star = false; skyBody('star', .35, -40, 26); skyBody('greyPlanet', .2, 60, 20, { drift: .01 }); lightI = 1; ambI = .4; break;
+    case 'europa': skyBody('jupiter', 12, 8, 18, { animate: false }); skyBody('moon', .5, 22, 21); lightDir = [.4, .7, .5]; ambI = .3; break;
+    case 'enceladus': skyBody('saturnEdge', 28, -4, 22, { aspect: 2.4 }); lightDir = [.3, .7, .6]; ambI = .3; break;
+    case 'miranda': skyBody('uranus', 22, 12, 19, { aspect: 1, discScale: 2, cellsPerDeg: 1.6 }); lightDir = [.5, .7, .3]; ambI = .3; break;
+    case 'triton': skyBody('neptune', 8, -16, 17); lightDir = [.5, .6, .4]; ambI = .25; break;
+    case 'pluto': skyBody('charon', 3.5, 24, 19); skyBody('star', .04, -60, 22); fog = [0x0a1a3a, 18, GRID * .48]; lightDir = [.6, .5, .3]; ambI = .3; break;
+    case 'proxima-b': bg = 0x140406; fog = [0x140406, 20, GRID * .48]; skyBody('redDwarf', 1.7, -12, 21, { animate: true }); skyBody('star', .1, 70, 16); skyBody('star', .08, 74, 14); lightDir = [.3, .7, .4]; lightI = .9; ambI = .28; break;
+    case 'trappist-1e': bg = 0x120508; fog = [0x120508, 20, GRID * .48]; skyBody('redDwarf', 2, 0, 22, { animate: true }); skyBody('brownPlanet', 1.5, 34, 18, { drift: .004 }); skyBody('greyPlanet', 1.2, -46, 15, { drift: .003 }); skyBody('rocky', .9, 110, 20, { drift: .002 }); lightDir = [0, .7, .6]; lightI = .9; ambI = .3; break;
+    case '51-peg-b': skyBody('hotJupiter', 50, -12, 14, { cellsPerDeg: 1.2 }); skyBody('star', 18, 42, 26, { cellsPerDeg: 1.2 }); lightDir = [.5, .3, -.8]; lightI = 1.3; ambI = .45; break;
+    case 'kepler-452b': bg = 0x5aa0c8; fog = [0x88bcd8, 30, GRID * .5]; star = false; skyBody('star', .5, -30, 24); lightI = 1.25; ambI = .5; break;
+    case 'sweeps-11': skyBody('hotJupiter', 45, 8, 14, { cellsPerDeg: 1.2 }); skyBody('star', 10, -50, 28, { cellsPerDeg: 1.4 }); lightDir = [-.5, .3, -.8]; lightI = 1.2; ambI = .45; break;
+    case 'finale': break;
+  }
+  if (star){ stars = makeStars(st.id === 'sweeps-11' ? 5000 : 1600, st.id === 'sweeps-11'); skyG.add(stars); }
+  scene.background = new THREE.Color(bg); scene.fog = new THREE.Fog(fog[0], fog[1], fog[2]);
+  sunLight.position.set(lightDir[0] * 100, lightDir[1] * 100, lightDir[2] * 100); sunLight.intensity = lightI; amb.intensity = ambI;
+}
+
+/* ============================================================ 道具(積木風) */
+const props = new THREE.Group(); world.add(props);
+function flag(x, z, y){ const g = new THREE.Group(); box(g, 0, y, 0, .1, 2.6, .1, P.lgrey); box(g, .6, y + 1.9, 0, 1.1, .35, .06, P.red); box(g, .6, y + 1.55, 0, 1.1, .35, .06, P.white); box(g, .6, y + 1.2, 0, 1.1, .35, .06, P.blue); g.position.set(x, 0, z); props.add(g); return g; }
+function lander(x, z, y){ const g = new THREE.Group();
+  box(g, 0, y, 0, 3.4, 1.4, 3.4, P.yellow); box(g, 0, y + .3, 0, 3.8, .8, 3.8, P.dorange); for (const [lx, lz] of [[-1.9, -1.9], [1.9, -1.9], [-1.9, 1.9], [1.9, 1.9]]){ box(g, lx, y, lz, .3, 1.6, .3, P.lgrey); box(g, lx, y, lz, .9, .2, .9, P.dgrey); }
+  box(g, 0, y + 1.4, 0, 2.4, 1.6, 2.4, P.lgrey); box(g, 0, y + 1.7, 1.25, 1.2, .8, .1, P.black); box(g, 0, y + 3, 0, .1, 1.2, .1, P.lgrey); box(g, 0, y + 4.1, 0, .8, .1, .8, P.white); box(g, -1.3, y + 1.4, 1.3, .5, .9, .5, P.black);
+  g.position.set(x, 0, z); props.add(g); return g; }
+function rocket(x, z, y){ const g = new THREE.Group(); box(g, 0, y, 0, 3, 1, 3, P.dgrey); box(g, 0, y + 1, 0, 2, 12, 2, P.white); box(g, 0, y + 13, 0, 1.6, 1.6, 1.6, P.white); box(g, 0, y + 14.6, 0, 1, 1.4, 1, P.red); box(g, 0, y + 16, 0, .4, 1, .4, P.red);
+  for (const [fx, fz] of [[-1.2, 0], [1.2, 0], [0, -1.2], [0, 1.2]]) box(g, fx, y + 1, fz, fx ? .5 : 1.2, 2.2, fz ? .5 : 1.2, P.red);
+  box(g, 0, y + 6, 0, 2.1, .6, 2.1, P.blue); box(g, 0, y + 10, 0, 2.1, .4, 2.1, P.black);
+  // 塔架
+  for (let i = 0; i < 4; i++){ const tx = 3.2 + (i % 2) * 1.6, tz = -.8 + Math.floor(i / 2) * 1.6; box(g, tx, y, tz, .3, 15, .3, P.dgrey); } for (let k = 0; k < 6; k++){ box(g, 4, y + 2 + k * 2.4, 0, 1.9, .25, .25, P.dgrey); box(g, 4, y + 2 + k * 2.4, 0, .25, .25, 1.9, P.dgrey); box(g, 2.2, y + 3 + k * 2.4, 0, 1.6, .2, .2, P.red); }
+  g.position.set(x, 0, z); props.add(g); return g; }
+function rover(x, z, y){ const g = new THREE.Group(); box(g, 0, y + .5, 0, 2.2, .6, 1.4, P.white); box(g, 0, y + 1.1, 0, 1.6, .3, 1, P.blue); for (const [wx, wz] of [[-.9, -.8], [.9, -.8], [-.9, .8], [.9, .8], [0, -.8], [0, .8]]) box(g, wx, y, wz, .5, .5, .3, P.black);
+  box(g, .6, y + 1.4, 0, .1, 1.2, .1, P.lgrey); box(g, .6, y + 2.6, 0, .5, .3, .3, P.lgrey); box(g, -.6, y + 1.4, 0, 1, .06, .8, P.dgrey); g.position.set(x, 0, z); props.add(g); return g; }
+function venera(x, z, y){ const g = new THREE.Group(); box(g, 0, y, 0, 2.6, .4, 2.6, P.dgrey); box(g, 0, y + .4, 0, 1.6, 1.4, 1.6, P.lgrey); box(g, 0, y + 1.8, 0, 1.2, .6, 1.2, P.lgrey); box(g, 0, y + 1.2, 0, 3.2, .2, 3.2, P.dgrey); box(g, 0, y + 2.4, 0, .1, 1.2, .1, P.lgrey); box(g, .8, y + 2.4, .8, .6, .06, .6, P.orange); g.position.set(x, 0, z); props.add(g); return g; }
+function mountain(x, z, w, hgt, hex, steps){ const g = new THREE.Group(); for (let i = 0; i < steps; i++){ const f = 1 - i / steps; box(g, 0, i * (hgt / steps), 0, w * f, hgt / steps, w * f * .7, hex, { fog: false }); } g.position.set(x, 0, z); props.add(g); return g; }
+function deckProps(st){
+  const y = 0; for (let x = -7; x < 7; x += 1) box(props, x + .5, y, -5.2, 1, .6, .4, P.dgrey); // 窗下欄
+  box(props, 0, y + .6, -5.4, 14.2, .3, .3, P.lgrey); box(props, 0, y + 4.6, -5.4, 14.2, .5, .3, P.lgrey);
+  box(props, -7.3, y, -5.4, .5, 5.2, .3, P.lgrey); box(props, 7.3, y, -5.4, .5, 5.2, .3, P.lgrey); box(props, -2.5, y + .9, -5.4, .25, 3.8, .3, P.lgrey); box(props, 2.5, y + .9, -5.4, .25, 3.8, .3, P.lgrey);
+  for (const sx of [-7.5, 7.5]) box(props, sx, y, 0, .6, 3.2, 10.6, P.lgrey); box(props, 0, y, 5.3, 15.6, 3.2, .6, P.lgrey);
+  for (let i = -6; i <= 6; i += 3){ const m = box(props, i, y + 3.2, 5.3, .5, .3, .5, P.dred); m.userData.blink = true; }
+  if (st.id === 'sun'){ for (let i = 0; i < 6; i++) box(props, -6 + i * 2.4, y + 4.9, -5.1, 2, .3, 1.4, P.dgrey); box(props, -5, y, 3, 1.4, 1.2, 1.4, P.yellow); box(props, -5, y + 1.2, 3, 1.2, .2, 1.2, P.black); }
+  box(props, 5, y, 3, 1.6, .9, 1, P.blue); box(props, 5, y + .9, 3, 1.4, .1, .8, P.lgrey); // 儀表台
+}
+function buildProps(st){
+  clearGroup(props); companion.visible = st.mode === 'walk'; plumes.length = 0; clearGroup(fxG); dust = null;
+  const gy = (x, z) => groundAt(x, z);
+  switch (st.id){
+    case 'earth': rocket(-6, -22, 0); break;
+    case 'moon': lander(-7, -12, gy(-7, -12)); flag(3, -8, gy(3, -8)); break;
+    case 'venus': venera(4, -7, gy(4, -7)); mountain(-20, -32, 22, 8, P.dorange, 5); mountain(24, -30, 16, 6, P.rbrown, 4); break;
+    case 'mercury': break;
+    case 'mars': rover(5, -9, gy(5, -9)); mountain(-60, -220, 260, 22, P.dorange, 6); makeDust(-8, -26); break;
+    case 'europa': makePlume(-12, -22, P.white, 14, .6); break;
+    case 'enceladus': makePlume(5, -18, P.white, 30, 1); makePlume(-9, -26, P.white, 26, .8); break;
+    case 'miranda': break;
+    case 'triton': makePlume(-7, -20, P.dgrey, 20, .5); makePlume(10, -28, P.dgrey, 16, .4); break;
+    case 'pluto': break;
+    default: if (st.mode === 'deck') deckProps(st);
+  }
+}
+
+/* ============================================================ 夥伴太空人與粒子 */
+const companion = new THREE.Group(); world.add(companion);
+const comp = {};
+(() => { const g = companion; comp.legL = box(g, -.2, 0, 0, .34, .7, .38, P.white); comp.legR = box(g, .2, 0, 0, .34, .7, .38, P.white); box(g, 0, .7, 0, .8, .25, .45, P.orange);
+  box(g, 0, .95, 0, .8, .75, .45, P.white); box(g, 0, 1.3, 0, .82, .1, .47, P.orange); box(g, 0, .85, -.4, .6, .8, .35, P.lgrey);
+  comp.armL = new THREE.Group(); comp.armL.position.set(-.55, 1.6, 0); box(comp.armL, 0, -.7, 0, .28, .7, .3, P.white); box(comp.armL, 0, -.9, 0, .3, .22, .32, P.orange); g.add(comp.armL);
+  comp.armR = new THREE.Group(); comp.armR.position.set(.55, 1.6, 0); box(comp.armR, 0, -.7, 0, .28, .7, .3, P.white); box(comp.armR, 0, -.9, 0, .3, .22, .32, P.orange); g.add(comp.armR);
+  box(g, 0, 1.7, 0, .7, .7, .7, P.white); box(g, 0, 1.8, .34, .5, .4, .06, P.blue); box(g, 0, 2.4, 0, .4, .1, .4, P.lgrey); })();
+const cstate = { x: 2, z: -8, yaw: 0, wave: 0, phase: 0 };
+function updateCompanion(dt, t){
+  if (!companion.visible) return;
+  const dx = cstate.x - player.x, dz = cstate.z - player.z, d = Math.hypot(dx, dz);
+  let walking = false;
+  if (d < 5){ const nx = dx / d, nz = dz / d; cstate.x += nx * 1.4 * dt; cstate.z += nz * 1.4 * dt; cstate.yaw = Math.atan2(nx, nz); walking = true; }
+  else if (d > 16){ cstate.wave = Math.min(1, cstate.wave + dt); cstate.yaw = Math.atan2(-dx, -dz); }
+  else { cstate.wave = Math.max(0, cstate.wave - dt); cstate.yaw = Math.atan2(-dx, -dz); if (Math.sin(t * .3) > .6){ cstate.x += Math.sin(cstate.yaw + Math.PI) * .6 * dt; cstate.z += Math.cos(cstate.yaw + Math.PI) * .6 * dt; walking = true; } }
+  if (walking) cstate.phase += dt * 6 * (cur.g < .3 ? .6 : 1);
+  const sw = walking ? Math.sin(cstate.phase) * .5 : 0;
+  comp.legL.rotation.x = sw; comp.legR.rotation.x = -sw; comp.armL.rotation.x = -sw * .8;
+  comp.armR.rotation.x = cstate.wave > 0 ? 0 : sw * .8; comp.armR.rotation.z = -cstate.wave * (2.6 + Math.sin(t * 6) * .3);
+  const gy = groundAt(cstate.x, cstate.z); companion.position.set(cstate.x, gy + (walking && cur.g < .3 ? Math.abs(Math.sin(cstate.phase)) * .3 : 0), cstate.z); companion.rotation.y = cstate.yaw;
+}
+const fxG = new THREE.Group(); world.add(fxG); const plumes = []; let dust = null;
+function makePlume(x, z, hex, height, width){
+  const n = 260, pos = new Float32Array(n * 3), vel = new Float32Array(n); const r = rng(x * 31 + z);
+  for (let i = 0; i < n; i++){ pos[i * 3] = (r() - .5) * width; pos[i * 3 + 1] = r() * height; pos[i * 3 + 2] = (r() - .5) * width; vel[i] = 4 + r() * 6; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: hex, size: 3, sizeAttenuation: false, fog: false })); pts.position.set(x, groundAt(x, z), z); fxG.add(pts); plumes.push({ pts, vel, height, width });
+}
+function makeDust(x, z){ dust = new THREE.Group(); const r = rng(9); for (let i = 0; i < 40; i++){ const a = r() * TAU, rr = .4 + r() * 1.6 * (i / 40 + .3), y = i * .55; const m = box(dust, Math.cos(a) * rr, y, Math.sin(a) * rr, .5, .5, .5, P.dorange, { transparent: true, opacity: .75 }); m.userData.a = a; m.userData.r = rr; } dust.position.set(x, groundAt(x, z), z); fxG.add(dust); }
+function updateFx(dt, t){
+  for (const p of plumes){ const a = p.pts.geometry.attributes.position; for (let i = 0; i < p.vel.length; i++){ let y = a.array[i * 3 + 1] + p.vel[i] * dt; if (y > p.height){ y = 0; } a.array[i * 3 + 1] = y; a.array[i * 3] *= 1 + dt * .3; a.array[i * 3 + 2] *= 1 + dt * .3; if (y < .2){ a.array[i * 3] = (Math.random() - .5) * p.width; a.array[i * 3 + 2] = (Math.random() - .5) * p.width; } } a.needsUpdate = true; }
+  if (dust){ dust.position.x += Math.sin(t * .2) * 1.5 * dt; dust.position.z += Math.cos(t * .17) * 1.2 * dt; dust.position.y = groundAt(dust.position.x, dust.position.z); dust.children.forEach((m, i) => { const a = m.userData.a + t * (3 - i * .03); m.position.x = Math.cos(a) * m.userData.r; m.position.z = Math.sin(a) * m.userData.r; }); }
+  props.children.forEach(m => { if (m.userData.blink) m.material = mat(Math.sin(t * 5) > 0 ? P.red : P.dred, m.material.emissive ? undefined : undefined); });
+}
+
+/* ============================================================ 自己的手與腳 */
+const handsG = new THREE.Group(); camera.add(handsG);
+function hand(side){ const g = new THREE.Group(); box(g, 0, -.1, 0, .22, .22, .22, P.orange); box(g, 0, .1, 0, .2, .18, .16, P.white); box(g, -.06 * side, .26, -.03, .07, .12, .09, P.white); box(g, .07 * side, .26, -.03, .07, .12, .09, P.white); box(g, 0, .34, -.06, .2, .06, .06, P.white); box(g, 0, -.3, .05, .26, .22, .26, P.white); return g; }
+const handR = hand(1), handL = hand(-1); handR.position.set(.62, -.5, -1.05); handL.position.set(-.66, -.56, -1.1); handR.rotation.set(-.5, -.3, .2); handL.rotation.set(-.6, .3, -.2); handR.scale.setScalar(.75); handL.scale.setScalar(.75); handsG.add(handR); handsG.add(handL);
+const bootsG = new THREE.Group(); rig.add(bootsG);
+function boot(){ const g = new THREE.Group(); box(g, 0, 0, 0, .28, .07, .5, P.dgrey); box(g, 0, .07, 0, .26, .22, .46, P.white); box(g, 0, .29, .1, .22, .5, .24, P.white); box(g, 0, .5, .1, .24, .08, .26, P.orange); return g; }
+const bootL = boot(), bootR = boot(); bootsG.add(bootL); bootsG.add(bootR);
+
+/* ============================================================ 玩家狀態與操作 */
+const player = { x: 0, z: 0, y: 0, yaw: 0, pitch: -.1, vy: 0, jumpY: 0, phase: 0, walking: false, walkUntil: 0, moved: 0, camY: 1.6 };
+const keys = {};
+const EYE = 1.6;
+function jump(){ if (!cur || player.jumpY > 0.001 || trans.active) return; const g = 9.8 * cur.g; const v0 = Math.min(3.2, Math.max(.35, g * .95)); player.vy = v0; player.jumpY = .001; }
+function updatePlayer(dt, t){
+  if (trans.active || !cur || cur.mode === 'finale') return;
+  // 降落後自動持續前進(觀景艙走到窗前就停);按住 S / ↓ 可暫停
+  const pause = keys.s || keys.arrowdown; let walkKey = !pause;
+  if (cur.mode === 'deck' && player.z < -3.6 && Math.cos(player.yaw) > 0) walkKey = false;
+  const turn = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0); player.yaw += turn * 1.6 * dt;
+  const look = (keys.q || keys.pageup ? 1 : 0) - (keys.e || keys.pagedown ? 1 : 0); player.pitch = clamp(player.pitch + look * 1.2 * dt, -40 * D2R, 40 * D2R);
+  const heavy = cur.g > 1.2; const speed = (heavy ? 1.5 : 2.3);
+  player.walking = !!walkKey;
+  if (player.walking){ const nx = -Math.sin(player.yaw), nz = -Math.cos(player.yaw); let px = player.x + nx * speed * dt, pz = player.z + nz * speed * dt;
+    if (cur.mode === 'deck'){ px = clamp(px, -6.4, 6.4); pz = clamp(pz, -4.4, 4.4); }
+    player.x = px; player.z = pz; player.moved += speed * dt; player.phase += dt * (heavy ? 5.5 : cur.g < .3 ? 3.6 : 4.8) * Math.pow(Math.max(cur.g, .05), .12);
+    if (player.moved > .9){ player.moved = 0; stamp(player.x - nx * .3, player.z - nz * .3); }
+    }
+  if (!card.classList.contains('hide') && performance.now() - arrivedAt > 7000 && !cardPinned) card.classList.add('hide');
+  // 跳躍
+  if (player.jumpY > 0){ const g = 9.8 * cur.g; player.vy -= g * dt; player.jumpY += player.vy * dt; if (player.jumpY <= 0){ player.jumpY = 0; player.vy = 0; stamp(player.x, player.z); } }
+  // 位置與抖動
+  const ground = groundAt(player.x, player.z); const amp = RM ? 0 : clamp(.05 / Math.pow(Math.max(cur.g, .05), .3), .04, .16);
+  const bob = player.walking && player.jumpY === 0 ? Math.abs(Math.sin(player.phase)) * amp : 0;
+  const targetY = ground + EYE + bob + player.jumpY; player.camY = lerp(player.camY, targetY, Math.min(1, dt * (player.jumpY > 0 ? 30 : 9)));
+  rig.position.set(player.x, player.camY - EYE, player.z); rig.rotation.y = player.yaw; camera.position.set(0, EYE, 0); camera.rotation.x = player.pitch;
+  // 手與腳動作
+  const s = player.walking ? Math.sin(player.phase) : Math.sin(t * .8) * .15; const sw = RM ? 0 : s;
+  handR.position.set(.62, -.5 + sw * .03, -1.05 + sw * .06); handL.position.set(-.66, -.56 - sw * .03, -1.1 - sw * .06);
+  bootL.position.set(-.24, -.02 + (player.jumpY > 0 ? -.3 : 0), -1.75 + sw * .45); bootR.position.set(.24, -.02 + (player.jumpY > 0 ? -.3 : 0), -1.75 - sw * .45);
+  bootL.rotation.x = -sw * .3; bootR.rotation.x = sw * .3;
+  // 地形重建
+  const cx = Math.floor(player.x), cz = Math.floor(player.z); if (Math.abs(cx - gridCenter[0]) > 2 || Math.abs(cz - gridCenter[1]) > 2) rebuildGrid(cx, cz);
+}
+// 拖曳環顧
+const lookEl = $('look'); let dragging = false, lastX = 0, lastY = 0;
+lookEl.addEventListener('pointerdown', e => { dragging = true; lastX = e.clientX; lastY = e.clientY; lookEl.classList.add('drag'); lookEl.setPointerCapture(e.pointerId); });
+lookEl.addEventListener('pointermove', e => { if (!dragging) return; const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; player.yaw -= dx * .006; player.pitch = clamp(player.pitch - dy * .005, -40 * D2R, 40 * D2R); });
+const endDrag = () => { dragging = false; lookEl.classList.remove('drag'); }; lookEl.addEventListener('pointerup', endDrag); lookEl.addEventListener('pointercancel', endDrag);
+addEventListener('keydown', e => { const k = e.key.toLowerCase(); if ($('about').classList.contains('open')){ if (k === 'escape') $('about').classList.remove('open'); return; }
+  keys[k] = true; if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'pageup', 'pagedown'].includes(k)) e.preventDefault();
+  if (k === ' ') jump(); if (k === 'n') nextStation(); if (k === 'p') go(idx - 1); if (k === 'i') toggleCard(); });
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+$('jump').addEventListener('click', jump);
+let lookUp = false; $('lookBtn').addEventListener('click', () => { lookUp = !lookUp; player.pitch = lookUp ? 34 * D2R : -30 * D2R; $('lookBtn').textContent = lookUp ? T().lookDown : T().lookUp; });
+let cardPinned = false; const card = $('card');
+function toggleCard(){ card.classList.toggle('hide'); cardPinned = !card.classList.contains('hide'); }
+$('infoBtn').addEventListener('click', toggleCard);
+$('photo').addEventListener('click', () => { try { renderer.render(scene, camera); canvas.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `astronaut-${cur ? cur.id : 'shot'}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }); } catch (e) {} });
+$('aboutBtn').addEventListener('click', () => $('about').classList.add('open')); $('aboutClose').addEventListener('click', () => $('about').classList.remove('open'));
+$('about').addEventListener('click', e => { if (e.target === $('about')) $('about').classList.remove('open'); });
+
+/* ============================================================ 過場:駕駛艙、曲速、降落 */
+(() => { // 駕駛艙(相機空間)
+  box(cockpit, 0, -1.3, -1.6, 3.6, .5, 1.2, P.dgrey); box(cockpit, 0, -.82, -1.7, 3.2, .06, .9, P.lgrey);
+  const r = rng(3); for (let i = 0; i < 14; i++) box(cockpit, -1.3 + i * .2, -.76, -1.5 + (i % 2) * .25, .12, .08, .12, [P.red, P.green, P.yellow, P.blue][Math.floor(r() * 4)]);
+  box(cockpit, .9, -.76, -1.3, .5, .3, .35, P.black); box(cockpit, -.9, -.76, -1.3, .5, .3, .35, P.black); box(cockpit, 0, -.78, -1.2, .3, .1, .3, P.orange);
+  // 舷窗框(方框積木)
+  box(cockpit, 0, 1.25, -2.4, 4.4, .3, .3, P.lgrey); box(cockpit, 0, -.75, -2.4, 4.4, .25, .3, P.lgrey); box(cockpit, -2.15, -.75, -2.4, .3, 2.3, .3, P.lgrey); box(cockpit, 2.15, -.75, -2.4, .3, 2.3, .3, P.lgrey);
+  box(cockpit, 0, 1.5, -2.2, 6, 1.5, .4, P.white); box(cockpit, 0, -2.3, -2.2, 6, 1.5, .4, P.white); box(cockpit, -3.1, -2.3, -2.2, 1.6, 5.3, .4, P.white); box(cockpit, 3.1, -2.3, -2.2, 1.6, 5.3, .4, P.white);
+  cockpit.traverse(o => { if (o.material) { o.material = o.material.clone(); o.material.fog = false; } });
+  cockpit.visible = false;
+})();
+// 曲速星流(相機空間的線段)
+const NST = 900; const stPos = new Float32Array(NST * 6); const stGeo = new THREE.BufferGeometry(); stGeo.setAttribute('position', new THREE.BufferAttribute(stPos, 3));
+const streaks = new THREE.LineSegments(stGeo, new THREE.LineBasicMaterial({ color: 0xcfd8ff, transparent: true, opacity: .85, fog: false })); streaks.frustumCulled = false; camera.add(streaks); streaks.visible = false;
+const stData = []; { const r = rng(8); for (let i = 0; i < NST; i++) stData.push({ x: (r() - .5) * 120, y: (r() - .5) * 80, z: -10 - r() * 200 }); }
+function updateStreaks(dt, speed, warp){
+  for (let i = 0; i < NST; i++){ const s = stData[i]; s.z += speed * dt; if (s.z > -2){ s.z = -200 - Math.random() * 20; s.x = (Math.random() - .5) * 120; s.y = (Math.random() - .5) * 80; }
+    const len = RM ? Math.min(2, speed * .01) : Math.min(60, speed * .06 * warp); stPos[i * 6] = s.x; stPos[i * 6 + 1] = s.y; stPos[i * 6 + 2] = s.z; stPos[i * 6 + 3] = s.x; stPos[i * 6 + 4] = s.y; stPos[i * 6 + 5] = s.z - len - .3; }
+  stGeo.attributes.position.needsUpdate = true;
+}
+// 出發地 / 目的地大圖
+let discFrom = null, discTo = null;
+const FULL = { earth: 'earth', moon: 'moon', venus: 'venus', mercury: 'mercury', sun: 'sun', mars: 'mars', europa: 'jupiter', enceladus: 'saturn', miranda: 'uranusFull', triton: 'neptune', pluto: 'pluto', 'proxima-b': 'rocky', 'trappist-1e': 'rockyBlue', '51-peg-b': 'hotJupiter', 'kepler-452b': 'rockyGreen', 'sweeps-11': 'hotJupiter', finale: null };
+const FULL_ASPECT = { europa: 1, enceladus: 2.4, miranda: 1 };
+const DEPART = { europa: 'europa', enceladus: 'enceladus', miranda: 'miranda', triton: 'triton', sun: 'sun', '51-peg-b': 'hotJupiter', 'sweeps-11': 'hotJupiter' };
+function makeDisc(key, aspect, anim){ const mz = mosaic(48, aspect || 1, PAINT[key]); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: mz.tex, fog: false, transparent: true, depthTest: false, alphaTest: .5 })); sp.userData.mz = mz; sp.userData.anim = anim; camera.add(sp); return sp; }
+const trans = { active: false, from: 0, to: 0, t0: 0, dur: 0, jump: false, phase: '' };
+let idx = 0, cur = null, arrivedAt = 0;
+function flightDuration(a, b){ const A = ST[a], Bs = ST[b]; let delta; if (A.au != null && Bs.au != null) delta = Math.abs(A.au - Bs.au); else delta = Math.abs(distLy(A) - distLy(Bs));
+  let d = clamp(5 + 1.3 * Math.log10(1 + delta), 6, 10); if (RM) d = clamp(d * .6, 3.5, 6); return d; }
+function go(to, jumpTo){
+  if (trans.active || to < 0 || to >= ST.length || to === idx) return;
+  trans.active = true; trans.from = idx; trans.to = to; trans.jump = !!jumpTo; trans.t0 = performance.now() / 1000; trans.dur = jumpTo ? (RM ? 3 : 4.5) : flightDuration(idx, to); trans.phase = '';
+  card.classList.add('hide'); ['jump', 'next', 'prev', 'lookBtn'].forEach(id => $(id).disabled = true); $('next').textContent = T().flying;
+  const fromKey = DEPART[ST[idx].id] || FULL[ST[idx].id]; if (fromKey){ discFrom = makeDisc(fromKey, 1); discFrom.position.set(0, -.3, -30); discFrom.scale.set(60, 60, 1); }
+  const toKey = FULL[ST[to].id]; if (toKey){ discTo = makeDisc(toKey, FULL_ASPECT[ST[to].id] || 1, toKey === 'sun'); discTo.position.set(0, .2, -60); discTo.scale.set(.1, .1, 1); }
+  $('stSub').textContent = `${to > idx ? T().heading : T().back} ${nameOf(ST[to])}`;
+}
+function setPhase(txt, sub){ trans.phase = txt; const el = $('phase'); el.innerHTML = txt ? txt + (sub ? `<small>${sub}</small>` : '') : ''; el.style.opacity = txt ? 1 : 0; }
+let bannerTimer = 0;
+function landingBanner(st){ clearTimeout(bannerTimer); if (st.mode === 'finale'){ setPhase(''); return; }
+  const head = st.mode === 'deck' ? T().arrivedDeck(nameOf(st)) : `${T().landed} ${nameOf(st)}`; const sub = st.mode === 'deck' ? L(st, 'site') : L(st, 'site').replace(T().siteStrip, '') + ' · ' + distText(st);
+  setPhase(head, sub); bannerTimer = setTimeout(() => setPhase(''), RM ? 3000 : 4200); }
+function updateTransition(now, dt){
+  const f = clamp((now - trans.t0) / trans.dur, 0, 1); const fromSt = ST[trans.from], toSt = ST[trans.to];
+  const fade = $('fade');
+  // 階段:登船 0–.1 | 起飛 .1–.3 | 曲速 .3–.7 | 接近 .7–.9 | 降落 .9–1
+  if (f < .1){ fade.style.opacity = Math.min(1, f / .06); }
+  else {
+    if (!cockpit.visible){ cockpit.visible = true; streaks.visible = true; world.visible = false; skyG.visible = false; handsG.visible = false; bootsG.visible = false; scene.fog = null; scene.background = new THREE.Color(0x02030a); camera.rotation.x = 0; rig.rotation.y = 0; }
+    const shake = RM ? 0 : (f < .3 ? Math.sin(now * 40) * .01 * (1 - (f - .1) / .2) : f > .9 ? Math.sin(now * 40) * .006 : 0); camera.position.set(shake, EYE + shake * .7, 0);
+    if (f < .3){ const k = (f - .1) / .2; fade.style.opacity = Math.max(0, 1 - k * 4); if (discFrom){ const s = lerp(60, 4, ease(k)); discFrom.scale.set(s, s, 1); discFrom.position.set(lerp(0, 8, k), lerp(-.3, -10, ease(k)), -30); } updateStreaks(dt, 30 + k * 60, .3); }
+    else if (f < .7){ const k = (f - .3) / .4; if (discFrom){ discFrom.material.opacity = Math.max(0, 1 - k * 5); } const w = Math.sin(k * Math.PI); updateStreaks(dt, 200 + w * 900, .5 + w); scene.background.setHex(0x0a0620).lerp(new THREE.Color(0x02030a), 1 - w * .8); }
+    else if (f < .9){ const k = (f - .7) / .2; if (discFrom) discFrom.visible = false; updateStreaks(dt, lerp(200, 20, k), .3);
+      if (discTo){ const s = lerp(.5, 70, ease(k)); discTo.scale.set(s * discTo.userData.mz.aspect, s, 1); discTo.position.set(0, .2 + k * 2, -60); if (discTo.userData.anim) { discTo.userData.mz.draw(now); discTo.userData.mz.tex.needsUpdate = true; } } }
+    else { const k = (f - .9) / .1; fade.style.opacity = Math.min(1, k * 3); updateStreaks(dt, 10, .2); }
+    // 距離計數器
+    const a = distLy(fromSt), b = distLy(toSt); const p = clamp((f - .1) / .8, 0, 1); setCounter(Math.exp(lerp(Math.log(a), Math.log(b), ease(p))), p > .9 ? toSt : null);
+    if (streaks.visible) streaks.material.opacity = f < .3 ? .3 : f < .7 ? .9 : .4;
+  }
+  if (f >= 1) arrive();
+}
+function arrive(){
+  trans.active = false; idx = trans.to; cur = ST[idx];
+  if (discFrom){ camera.remove(discFrom); discFrom.material.map.dispose(); discFrom = null; } if (discTo){ camera.remove(discTo); discTo.material.map.dispose(); discTo = null; }
+  if (cur.mode === 'finale'){ startFinale(); }
+  else { cockpit.visible = false; streaks.visible = false; world.visible = true; skyG.visible = true; handsG.visible = true; bootsG.visible = cur.mode !== 'deck' || true; enterStation(); }
+  $('fade').style.opacity = 0; arrivedAt = performance.now(); updateUI(); landingBanner(cur);
+}
+function enterStation(){
+  terrain = cur.mode === 'deck' ? TERRAIN.deck : TERRAIN[cur.id]; footprints.clear();
+  player.x = .5; player.z = .5; player.yaw = 0; player.pitch = -6 * D2R; player.jumpY = 0; player.vy = 0; player.phase = 0; lookUp = false; $('lookBtn').textContent = T().lookUp;
+  gridCenter = [1e9, 1e9]; rebuildGrid(0, 0); player.camY = groundAt(player.x, player.z) + EYE;
+  buildSky(cur); buildProps(cur); cstate.x = 2; cstate.z = -8; cstate.wave = 0;
+  cardPinned = false; card.classList.remove('hide');
+}
+/* ============================================================ 結尾:銀河系 */
+let galaxy = null, finaleT0 = 0;
+function startFinale(){
+  cockpit.visible = true; streaks.visible = false; world.visible = false; skyG.visible = false; handsG.visible = false; bootsG.visible = false; scene.fog = null; scene.background = new THREE.Color(0x02030a);
+  const r = rng(7), n = 9000, pos = new Float32Array(n * 3), col = new Float32Array(n * 3); let i = 0;
+  const put = (x, y, z, c) => { pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z; col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2]; i++; };
+  const gauss = () => (r() + r() + r() - 1.5) * 1.63;
+  while (i < 1800){ const a = r() * TAU, d = Math.pow(r(), 1.6) * .22; put(d * Math.cos(a), gauss() * .03, d * Math.sin(a), [1, .88, .68]); }
+  [0, Math.PI, Math.PI / 2, -Math.PI / 2].forEach((a0, k) => { const cnt = k < 2 ? 2400 : 1000; for (let j = 0; j < cnt && i < n; j++){ const th = r() * 3.6, rad = .12 * Math.exp(.62 * th); if (rad > 1) continue; const sc = (.035 + .1 * rad) * (k < 2 ? 1 : 1.5); put(rad * Math.cos(th + a0) + gauss() * sc, gauss() * .012, rad * Math.sin(th + a0) + gauss() * sc, k < 2 ? [.8, .88, 1] : [.6, .68, .85]); } });
+  while (i < n){ const a = r() * TAU, d = Math.sqrt(r()); put(d * Math.cos(a), gauss() * .015, d * Math.sin(a), [.45, .45, .5]); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  galaxy = new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true, fog: false, transparent: true, opacity: .9 })); galaxy.frustumCulled = false;
+  galaxy.rotation.x = -1.05; camera.add(galaxy); finaleT0 = performance.now() / 1000;
+  renderFinaleLabels();
+}
+function renderFinaleLabels(){ if (!galaxy) return; const t = T(); $('finale').innerHTML = `<div class="lbl" id="lblSun"><i></i>${t.lblSun}</div><div class="lbl" id="lblSw"><i></i>${t.lblSw}</div><div class="lbl below" id="lblNear">${t.lblNear}</div><div class="big" id="lblBig">${t.big}<small>${t.bigSub}</small></div>`;
+}
+const SUN_G = new THREE.Vector3(.52 * Math.cos(3.9), 0, .52 * Math.sin(3.9)), SW_G = new THREE.Vector3(-.034 * Math.cos(3.9), 0, -.034 * Math.sin(3.9)), tmpV = new THREE.Vector3();
+function placeLabel(id, local, vis){ const el = $(id); if (!el) return; tmpV.copy(local); galaxy.localToWorld(tmpV); tmpV.project(camera); const x = (tmpV.x * .5 + .5) * W, y = (-tmpV.y * .5 + .5) * H; el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.opacity = vis ? 1 : 0; }
+function updateFinale(now){
+  if (!galaxy) return; const q = ease(clamp((now - finaleT0) / (RM ? 4 : 8), 0, 1)); const D = lerp(1.5, 44, q); galaxy.position.set(0, lerp(-1, 1.5, q), -D); const S = 16; galaxy.scale.set(S, S, S); galaxy.rotation.y += .0004;
+  placeLabel('lblSun', SUN_G, q > .55); placeLabel('lblSw', SW_G, q > .7); placeLabel('lblNear', SUN_G, q > .8); const big = $('lblBig'); if (big) big.style.opacity = q > .9 ? 1 : 0;
+  if (q >= 1 && card.classList.contains('hide')) card.classList.remove('hide');
+}
+function leaveFinale(){ if (galaxy){ camera.remove(galaxy); galaxy.geometry.dispose(); galaxy = null; } $('finale').innerHTML = ''; }
+
+/* ============================================================ 介面 */
+function fmtDist(ly){ if (ly < .01){ const au = ly / AU2LY; return [au < .02 ? '0' : au < 10 ? au.toFixed(2) : au.toFixed(1), 'AU']; } return [ly < 10 ? ly.toFixed(2) : ly < 100 ? ly.toFixed(1) : Math.round(ly).toLocaleString('en-US'), '光年']; }
+function setCounter(ly, st){ const [v, u] = fmtDist(ly); const t = T(); $('distVal').textContent = v; $('distUnit').textContent = u === 'AU' ? 'AU' : t.ly; $('distLabel').textContent = st && st.id === 'sun' ? t.sunLight : st && st.id === 'moon' ? t.moonDist : (u === 'AU' ? t.fromSun : t.fromEarth); }
+function updateUI(){
+  const st = cur, t = T(); $('stName').innerHTML = LANG === 'en' ? `${st.en}<small>${st.name}</small>` : `${st.name}<small>${st.en}</small>`; $('stSub').textContent = `${L(st, 'type')} · ${distText(st)}`;
+  $('site').textContent = L(st, 'site'); $('stats').innerHTML = L(st, 'stats').map(([k, v]) => `<div>${k}<b>${v}</b></div>`).join(''); $('fact').textContent = L(st, 'fact');
+  $('note').textContent = st.ly != null && st.mode !== 'finale' ? t.exoNote : st.mode === 'finale' ? t.finNote : t.solNote + (st.mode === 'deck' ? t.deckNote : '');
+  $('title').textContent = t.title; $('jump').textContent = t.jump; $('infoBtn').textContent = t.info; $('prev').textContent = t.prev; $('photo').textContent = t.photo; $('lookBtn').textContent = lookUp ? t.lookDown : t.lookUp;
+  const fin = st.mode === 'finale'; if (fin) card.classList.add('hide');
+  $('jump').disabled = fin; $('lookBtn').disabled = fin;
+  $('next').disabled = false; $('prev').disabled = idx === 0; $('next').textContent = fin ? t.restart : idx === ST.length - 2 ? t.toGalaxy : t.next; $('next').setAttribute('aria-label', $('next').textContent);
+  [...$('dots').children].forEach((d, i) => { d.classList.toggle('on', i === idx); d.classList.toggle('done', i < idx); d.setAttribute('aria-selected', i === idx ? 'true' : 'false'); d.setAttribute('aria-label', t.gotoStop(i + 1, nameOf(ST[i]))); d.title = nameOf(ST[i]); });
+  setCounter(distLy(st), st);
+}
+function nextStation(){ if (idx === ST.length - 1){ leaveFinale(); go(0, true); } else go(idx + 1); }
+ST.forEach((st, i) => { const d = document.createElement('button'); d.setAttribute('role', 'tab'); d.setAttribute('aria-label', `跳到第 ${i + 1} 站:${st.name}`); d.title = st.name; d.addEventListener('click', () => { if (idx === ST.length - 1) leaveFinale(); go(i, true); }); $('dots').appendChild(d); });
+$('next').addEventListener('click', nextStation); $('prev').addEventListener('click', () => { if (idx === ST.length - 1) leaveFinale(); go(idx - 1); });
+
+function setLang(l){ LANG = l; try { localStorage.setItem('aj-lang', l); } catch (e) {} document.documentElement.lang = l === 'en' ? 'en' : 'zh-Hant'; document.title = l === 'en' ? "An Astronaut's Solar System Walk" : '太空人的太陽系之旅 · 第一人稱步行版';
+  [...$('langbar').children].forEach(b => b.classList.toggle('on', b.dataset.lang === l)); if (cur && !trans.active){ updateUI(); if (galaxy) renderFinaleLabels(); } }
+[...$('langbar').children].forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+/* ============================================================ 主循環 */
+let last = performance.now() / 1000, fpsAcc = 0, fpsN = 0, lowT = 0, quality = 2;
+function frame(){
+  const now = performance.now() / 1000; const dt = Math.min(.05, now - last); last = now;
+  if (trans.active) updateTransition(now, dt);
+  else if (cur && cur.mode === 'finale') updateFinale(now);
+  else { updatePlayer(dt, now); updateCompanion(dt, now); updateFx(dt, now);
+    for (const sp of skyBodies){ if (sp.userData.animate && (Math.floor(now * 4) !== sp.userData.lastT)){ sp.userData.lastT = Math.floor(now * 4); sp.userData.mz.draw(now); sp.userData.mz.tex.needsUpdate = true; }
+      if (sp.userData.drift){ sp.userData.az += sp.userData.drift * dt * 60; const a = sp.userData.az * D2R, e = sp.userData.alt * D2R; sp.position.set(-Math.sin(a) * Math.cos(e) * 900, Math.sin(e) * 900, -Math.cos(a) * Math.cos(e) * 900); } }
+    if (stars) stars.rotation.y += dt * .002; }
+  renderer.render(scene, camera);
+  // 自動降級
+  fpsAcc += dt; fpsN++; if (fpsAcc > 1){ const fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; if (fps < 26) lowT++; else lowT = 0; if (lowT >= 3 && quality > 0){ quality--; lowT = 0; GRID = quality === 1 ? 52 : 40; RES = quality === 1 ? 1 / 4 : 1 / 5; resize(); buildInstances(); if (terrain && !trans.active) rebuildGrid(Math.floor(player.x), Math.floor(player.z)); } }
+  requestAnimationFrame(frame);
+}
+/* ============================================================ 啟動 */
+resize(); buildInstances();
+try { const q = parseInt(new URLSearchParams(location.search).get('station'), 10); if (q >= 0 && q < ST.length) idx = q; } catch (e) {}
+cur = ST[idx]; if (cur.mode === 'finale'){ startFinale(); } else enterStation();
+arrivedAt = performance.now(); setLang(LANG); requestAnimationFrame(frame);
+try { const sp = new URLSearchParams(location.search); if (sp.get('fly')) setTimeout(() => nextStation(), 500); if (sp.get('look')){ player.pitch = parseFloat(sp.get('look')) * D2R; } if (sp.get('yaw')){ player.yaw = parseFloat(sp.get('yaw')) * D2R; } } catch (e) {}
+})();
+</script>
+</body>
+</html>
