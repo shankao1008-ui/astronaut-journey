@@ -214,6 +214,7 @@ const PAINT = {
   redDwarf: (u, v, t, i, j) => { if (!inDisc(u, v)) return null; const fl = Math.max(0, Math.sin(t * .9)) ** 30; const g = hash(i * 3 + Math.floor(t * 2), j * 5); if (fl > .3 && g > .5) return P.yellow; if (u * u + v * v < .25) return g > .5 ? P.orange : P.red; return g > .6 ? P.red : P.dred; },
   star: (u, v) => { if (!inDisc(u, v)) return null; return u * u + v * v < .5 ? P.white : P.yellow; },
   hotJupiter: (u, v) => { if (!inDisc(u, v)) return null; if (u > .35) return u > .7 ? P.black : P.dred; return bandsPainter([P.dred, P.red, P.orange, P.red, P.dorange, P.orange, P.red, P.dred], .1)(u, v); },
+  dudu: (u, v) => { if (!inDisc(u, v)) return null; const x = u / .55, y = -(v - .1) / .55; const hh = Math.pow(x * x + y * y - 1, 3) - x * x * y * y * y; if (hh < 0) return P.red; return vnoise(u * 5, v * 5) > .6 ? P.white : P.tan; },
   brownPlanet: (u, v) => inDisc(u, v) ? (vnoise(u * 4, v * 4) > .6 ? P.dtan : P.rbrown) : null,
   greyPlanet: (u, v) => inDisc(u, v) ? (vnoise(u * 4 + 3, v * 4) > .6 ? P.dgrey : P.lgrey) : null
 };
@@ -223,6 +224,9 @@ const ST = [
   { id: 'earth', name: '地球', en: 'Earth', type: '行星 · 出發點', au: 1, site: '落腳處:發射場', mode: 'walk', g: 1, tint: '#9fc8ff',
     stats: [['重力', '1 g'], ['氣溫', '約 15°C'], ['平均半徑', '6,371 km'], ['一天', '23.9 小時']],
     fact: '我們的出發點,太陽系中目前唯一已知有生命的星球。前方是積木火箭與發射塔架,按「前往下一站」就會倒數十秒後登艦。' },
+  { id: 'dudu', name: '嘟嘟星球', en: 'Dudu Planet', type: '行星 · 彩蛋', au: 1.02, site: '落腳處:照片小丘', mode: 'walk', g: .8, tint: '#ffc0d0',
+    stats: [['重力', '約 0.8 g(剛好適合蹦蹦跳)'], ['氣溫', '永遠剛剛好'], ['居民', '2 位(加一位太空人)'], ['特產', '鬼臉與大笑']],
+    fact: '虛構的嘟嘟星球,離地球只有一步之遙。沿著小路往前走,兩旁的積木相框裡是嘟嘟星球居民的照片;抬頭看,天上的嘟嘟月亮也是一張照片。' },
   { id: 'moon', name: '月球', en: 'Moon', type: '地球的衛星', au: 1, extra: '距地球 384,400 km', site: '落腳處:月表', mode: 'walk', g: .165, tint: '#dfe3ea',
     stats: [['重力', '0.165 g'], ['溫度', '白天 127°C / 夜 −173°C'], ['天上的地球', '約 1.9°(月亮的 3.7 倍寬)'], ['距地球', '384,400 km']],
     fact: '月球沒有風,腳印可以保留數百萬年。抬頭看:藍白色的地球掛在全黑的天空中,旁邊是登月艙和旗子,前方是你的夥伴。' },
@@ -269,12 +273,14 @@ const ST = [
     stats: [['質量', '約 9.7 倍木星'], ['公轉', '約 1.8 天'], ['位置', '銀河核心方向'], ['距離', '約 27,700 光年']],
     fact: '哈伯望遠鏡在銀河核心方向找到的行星,是已確認系外行星中最遠的之一。窗外是密集的銀河核心星場。' },
   { id: 'finale', name: '銀河系', en: 'Milky Way', type: '結尾 · 從船窗看出去', ly: 27700, site: '太空船駕駛艙', mode: 'finale', g: 1, tint: '#cfd8ff',
-    stats: [['銀河系直徑', '約 10 萬光年'], ['太陽距核心', '約 26,000 光年'], ['你飛了', '約 27,700 光年'], ['造訪站點', '16 站']],
+    stats: [['銀河系直徑', '約 10 萬光年'], ['太陽距核心', '約 26,000 光年'], ['你飛了', '約 27,700 光年'], ['造訪站點', '17 站']],
     fact: '你剛才飛越了約 27,700 光年,而這只是銀河系直徑(約 10 萬光年)的一小段。' }
 ];
 const EN = {
   earth: { type: 'Planet · Departure', site: 'Landing site: launch pad', stats: [['Gravity', '1 g'], ['Temperature', 'about 15°C'], ['Mean radius', '6,371 km'], ['Day length', '23.9 hours']],
     fact: 'Our starting point, the only world in the Solar System known to harbour life. Ahead is a brick rocket and its launch tower; press "Next stop" to board.' },
+  dudu: { type: 'Planet · Bonus', site: 'Landing site: photo hill', stats: [['Gravity', 'about 0.8 g (perfect for bouncing)'], ['Temperature', 'always just right'], ['Residents', '2 (plus one astronaut)'], ['Speciality', 'funny faces and big laughs']],
+    fact: 'The fictional Dudu Planet, one small step from Earth. Follow the path: the brick frames on both sides hold photos of the planet\'s residents, and the Dudu moon overhead is a photo too.' },
   moon: { type: "Earth's moon", extra: '384,400 km from Earth', site: 'Landing site: lunar surface', stats: [['Gravity', '0.165 g'], ['Temperature', '127°C day / −173°C night'], ['Earth in the sky', 'about 1.9° (3.7× wider than our Moon)'], ['From Earth', '384,400 km']],
     fact: 'There is no wind on the Moon, so footprints can last millions of years. Look up: the blue-and-white Earth hangs in a pitch-black sky. Beside you are the lunar module and a flag, and your partner walks ahead.' },
   venus: { type: 'Planet', site: 'Landing site: lava plain', stats: [['Gravity', '0.90 g'], ['Surface temperature', 'about 464°C'], ['Pressure', 'about 92 atmospheres'], ['Rotation', '243 days (retrograde)']],
@@ -305,7 +311,7 @@ const EN = {
     fact: 'Discovered in 2015, orbiting a Sun-like star about every 385 days; often called "Earth\'s cousin". The stronger gravity makes every step heavier.' },
   'sweeps-11': { type: 'Exoplanet · Hot Jupiter', site: 'Observation deck above a hot Jupiter (no disembarking)', stats: [['Mass', 'about 9.7× Jupiter'], ['Orbit', 'about 1.8 days'], ['Location', 'toward the Galactic centre'], ['Distance', 'about 27,700 light-years']],
     fact: 'Found by the Hubble Space Telescope toward the Galactic centre, one of the most distant confirmed exoplanets. Outside the window is the dense star field of the Galactic core.' },
-  finale: { type: "Finale · From the ship's window", site: 'Spacecraft cockpit', stats: [['Milky Way diameter', 'about 100,000 light-years'], ['Sun to Galactic centre', 'about 26,000 light-years'], ['You travelled', 'about 27,700 light-years'], ['Stops visited', '16']],
+  finale: { type: "Finale · From the ship's window", site: 'Spacecraft cockpit', stats: [['Milky Way diameter', 'about 100,000 light-years'], ['Sun to Galactic centre', 'about 26,000 light-years'], ['You travelled', 'about 27,700 light-years'], ['Stops visited', '17']],
     fact: "You just crossed about 27,700 light-years, and that is only a small slice of the Milky Way's roughly 100,000-light-year diameter." }
 };
 const UI = {
@@ -335,6 +341,7 @@ const moonCr = craterField(1, 36, 140, 1.5, 9, 1.4), mercCr = craterField(2, 60,
 const inR = (x, z, r) => x * x + z * z < r * r;
 const TERRAIN = {
   earth: { h: (x, z) => inR(x, z, 14) ? 0 : x > 46 ? -1 : q2(vnoise(x * .12, z * .12) * 1.2 - .3), c: (x, z, h) => inR(x, z, 14) ? ((Math.floor(x / 2) + Math.floor(z / 2)) % 2 ? P.lgrey : P.dgrey) : x > 46 ? P.blue : (vnoise(x * .3, z * .3) > .6 ? P.green : darken(P.green, .8)) },
+  dudu: { h: (x, z) => Math.abs(x) < 3 ? 0 : q2(vnoise(x * .1, z * .1) * 2.2 - .4), c: (x, z, h) => Math.abs(x) < 3 ? ((Math.floor(x) + Math.floor(z)) % 2 ? P.white : P.tan) : h > 1 ? P.white : (vnoise(x * .3 + 7, z * .3) > .55 ? P.orange : P.tan) },
   moon: { h: (x, z) => q2(moonCr(x, z) + vnoise(x * .15, z * .15) * .8), c: (x, z, h) => (h < -.4 ? P.dgrey : vnoise(x * .4 + 3, z * .4) > .68 ? P.dgrey : P.lgrey) },
   venus: { h: (x, z) => q2(Math.floor(vnoise(x * .08, z * .08) * 3) * .5 + (vnoise(x * .5, z * .5) > .85 ? .5 : 0)), c: (x, z, h) => h > .9 ? P.dorange : (vnoise(x * .25 + 5, z * .25) > .55 ? P.rbrown : P.dorange) },
   mercury: { h: (x, z) => q2(mercCr(x, z) + (x > 18 && x < 30 ? (x - 18) * .3 : x >= 30 ? 3.6 : 0) + vnoise(x * .2, z * .2) * .4), c: (x, z, h) => (vnoise(x * .3 + 1, z * .3) > .6 ? P.dtan : h > 2 ? P.dgrey : P.dgrey) },
@@ -433,6 +440,7 @@ function buildSky(st){
   switch (st.id){
     case 'earth': bg = 0x6fc3d8; fog = [0x8fd0e0, 30, GRID * .5]; star = false; skyBody('star', 2.2, -40, 26); lightI = 1.2; ambI = .5;
       for (let i = 0; i < 6; i++){ const sp = skyBody('moon', 5 + hash(i, 1) * 5, -120 + i * 48, 10 + hash(i, 2) * 10, { discScale: 1 }); sp.material.map = mosaic(10, 2.2, (u, v) => (u * u / 4 + v * v < 1 && vnoise(u * 2 + i, v * 2) > .3) ? P.white : null).tex; sp.scale.x *= 2.2; sp.userData.drift = .0015; } break;
+    case 'dudu': bg = 0xE7A9B8; fog = [0xE7A9B8, 28, GRID * .5]; star = false; skyBody('star', 2, 50, 30); photoMoon('dudu/1.jpg', 9, -14, 20); lightI = 1.15; ambI = .5; break;
     case 'moon': skyBody('earth', 1.9, 18, 21, { animate: true }); lightDir = [.6, .5, .4]; ambI = .22; break;
     case 'venus': bg = 0xB86A16; fog = [0xC97A20, 2, 34]; star = false; lightDir = [0, 1, 0]; lightI = .7; ambI = .55; break;
     case 'mercury': skyBody('star', 1.4, -28, 24); lightDir = [.55, .55, .3]; lightI = 1.6; ambI = .12; break;
@@ -455,6 +463,24 @@ function buildSky(st){
   sunLight.position.set(lightDir[0] * 100, lightDir[1] * 100, lightDir[2] * 100); sunLight.intensity = lightI; amb.intensity = ambI;
 }
 
+/* ============================================================ 照片(嘟嘟星球) */
+// 透過 <img> 載入再畫到 canvas,瀏覽器會自動處理 EXIF 方向
+function loadPhoto(url, cb){ const im = new Image(); im.onload = () => { const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height; const cv = document.createElement('canvas'); const k = Math.min(1, 512 / Math.max(w, h)); cv.width = Math.round(w * k); cv.height = Math.round(h * k); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); cb(cv); }; im.src = url; }
+function photoMoon(url, angDeg, azDeg, altDeg){
+  const D = 900, size = 2 * D * Math.tan(angDeg / 2 * D2R); const cv = document.createElement('canvas'); cv.width = cv.height = 40; const tex = new THREE.CanvasTexture(cv); tex.magFilter = tex.minFilter = THREE.NearestFilter;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, fog: false, transparent: true, alphaTest: .5 })); sp.scale.set(size, size, 1); const a = azDeg * D2R, e = altDeg * D2R;
+  sp.position.set(-Math.sin(a) * Math.cos(e) * D, Math.sin(e) * D, -Math.cos(a) * Math.cos(e) * D); sp.userData = { az: azDeg, alt: altDeg }; skyG.add(sp); skyBodies.push(sp);
+  loadPhoto(url, src => { const c = cv.getContext('2d'); c.clearRect(0, 0, 40, 40); c.save(); c.beginPath(); c.arc(20, 20, 20, 0, TAU); c.clip(); const sw = src.width, sh = src.height, m = Math.min(sw, sh); c.imageSmoothingEnabled = false; c.drawImage(src, (sw - m) / 2, (sh - m) / 2, m, m, 0, 0, 40, 40); c.restore(); tex.needsUpdate = true; });
+}
+function photoBoard(x, z, url, frameHex){
+  const g = new THREE.Group(); const gy = groundAt(x, z); const W0 = 3.4, H0 = 2.6;
+  box(g, 0, 0, 0, .3, 1.2, .3, P.dgrey); box(g, -1.5, 0, 0, .25, 1.4, .25, P.lgrey); box(g, 1.5, 0, 0, .25, 1.4, .25, P.lgrey);
+  const frame = box(g, 0, 1.2, 0, W0 + .5, H0 + .5, .3, frameHex);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x222222, fog: false })); plane.position.set(0, 1.2 + (H0 + .5) / 2, .17); plane.scale.set(W0, H0, 1); g.add(plane);
+  loadPhoto(url, cv => { const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; plane.material.map = tex; plane.material.color.setHex(0xffffff); plane.material.needsUpdate = true;
+    const ar = cv.width / cv.height; let pw = W0, ph = H0; if (ar > W0 / H0) ph = W0 / ar; else pw = H0 * ar; plane.scale.set(pw, ph, 1); frame.scale.set(pw + .5, ph + .5, .3); frame.position.y = 1.2 + (ph + .5) / 2; plane.position.y = frame.position.y; });
+  g.position.set(x, gy, z); g.rotation.y = Math.atan2(x - .5, z - .5) + Math.PI; props.add(g); return g;
+}
 /* ============================================================ 道具(積木風) */
 const props = new THREE.Group(); world.add(props);
 function flag(x, z, y){ const g = new THREE.Group(); box(g, 0, y, 0, .1, 2.6, .1, P.lgrey); box(g, .6, y + 1.9, 0, 1.1, .35, .06, P.red); box(g, .6, y + 1.55, 0, 1.1, .35, .06, P.white); box(g, .6, y + 1.2, 0, 1.1, .35, .06, P.blue); g.position.set(x, 0, z); props.add(g); return g; }
@@ -486,6 +512,8 @@ function buildProps(st){
   const gy = (x, z) => groundAt(x, z);
   switch (st.id){
     case 'earth': rocket(-6, -22, 0); break;
+    case 'dudu': { const cols = [P.red, P.orange, P.yellow, P.green, P.blue, P.sky, P.red]; const pos = [[-4.5, -7], [4.5, -11], [-4.8, -15], [4.8, -19], [-4.5, -23], [4.5, -27], [0, -34]];
+      pos.forEach((pz, i) => photoBoard(pz[0], pz[1], `dudu/${i + 1}.jpg`, cols[i])); flag(6.5, -5, groundAt(6.5, -5)); break; }
     case 'moon': lander(-7, -12, gy(-7, -12)); flag(3, -8, gy(3, -8)); break;
     case 'venus': venera(4, -7, gy(4, -7)); mountain(-20, -32, 22, 8, P.dorange, 5); mountain(24, -30, 16, 6, P.rbrown, 4); break;
     case 'mercury': break;
@@ -618,7 +646,7 @@ function updateStreaks(dt, speed, warp){
 }
 // 出發地 / 目的地大圖
 let discFrom = null, discTo = null;
-const FULL = { earth: 'earth', moon: 'moon', venus: 'venus', mercury: 'mercury', sun: 'sun', mars: 'mars', europa: 'jupiter', enceladus: 'saturn', miranda: 'uranusFull', triton: 'neptune', pluto: 'pluto', 'proxima-b': 'rocky', 'trappist-1e': 'rockyBlue', '51-peg-b': 'hotJupiter', 'kepler-452b': 'rockyGreen', 'sweeps-11': 'hotJupiter', finale: null };
+const FULL = { earth: 'earth', dudu: 'dudu', moon: 'moon', venus: 'venus', mercury: 'mercury', sun: 'sun', mars: 'mars', europa: 'jupiter', enceladus: 'saturn', miranda: 'uranusFull', triton: 'neptune', pluto: 'pluto', 'proxima-b': 'rocky', 'trappist-1e': 'rockyBlue', '51-peg-b': 'hotJupiter', 'kepler-452b': 'rockyGreen', 'sweeps-11': 'hotJupiter', finale: null };
 const FULL_ASPECT = { europa: 1, enceladus: 2.4, miranda: 1 };
 const DEPART = { europa: 'europa', enceladus: 'enceladus', miranda: 'miranda', triton: 'triton', sun: 'sun', '51-peg-b': 'hotJupiter', 'sweeps-11': 'hotJupiter' };
 function makeDisc(key, aspect, anim){ const mz = mosaic(48, aspect || 1, PAINT[key]); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: mz.tex, fog: false, transparent: true, depthTest: false, alphaTest: .5 })); sp.userData.mz = mz; sp.userData.anim = anim; camera.add(sp); return sp; }
@@ -704,7 +732,7 @@ function setCounter(ly, st){ const [v, u] = fmtDist(ly); const t = T(); $('distV
 function updateUI(){
   const st = cur, t = T(); $('stName').innerHTML = LANG === 'en' ? `${st.en}<small>${st.name}</small>` : `${st.name}<small>${st.en}</small>`; $('stSub').textContent = `${L(st, 'type')} · ${distText(st)}`;
   $('site').textContent = L(st, 'site'); $('stats').innerHTML = L(st, 'stats').map(([k, v]) => `<div>${k}<b>${v}</b></div>`).join(''); $('fact').textContent = L(st, 'fact');
-  $('note').textContent = st.ly != null && st.mode !== 'finale' ? t.exoNote : st.mode === 'finale' ? t.finNote : t.solNote + (st.mode === 'deck' ? t.deckNote : '');
+  $('note').textContent = st.id === 'dudu' ? (LANG === 'en' ? 'Dudu Planet is fictional; the photos were provided by the author' : '嘟嘟星球為虛構星球;照片由作者提供') : st.ly != null && st.mode !== 'finale' ? t.exoNote : st.mode === 'finale' ? t.finNote : t.solNote + (st.mode === 'deck' ? t.deckNote : '');
   $('title').textContent = t.title; $('jump').textContent = t.jump; $('infoBtn').textContent = t.info; $('prev').textContent = t.prev; $('photo').textContent = t.photo; $('lookBtn').textContent = lookUp ? t.lookDown : t.lookUp;
   const fin = st.mode === 'finale'; if (fin) card.classList.add('hide');
   $('jump').disabled = fin; $('lookBtn').disabled = fin;

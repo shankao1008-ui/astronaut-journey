@@ -6,27 +6,28 @@ A first-person, brick-and-mosaic style walking tour of the Solar System and five
 
 Built as a single HTML file with [Three.js](https://threejs.org/). Interface in English and Traditional Chinese (繁體中文) with a language switch in the top-left corner.
 
-## The journey (17 stops)
+## The journey (18 stops)
 
 | # | Stop | Where you stand |
 |---|------|-----------------|
 | 0 | Earth | Launch pad, brick rocket and tower |
-| 1 | Moon | Lunar surface, lunar module and flag, Earth in a black sky |
-| 2 | Venus | Lava plain in thick orange haze, Venera lander |
-| 3 | Mercury | Cratered ground with long scarps, oversized Sun |
-| 4 | Sun | Heat-shielded observation deck (no solid surface) |
-| 5 | Mars | Red plain, rover, dust devil, Olympus Mons on the horizon |
-| 6 | Jupiter → Europa | Cracked ice, Jupiter and its red spot overhead |
-| 7 | Saturn → Enceladus | Ice geysers, Saturn with its rings seen edge-on |
-| 8 | Uranus → Miranda | Patchwork ice and the Verona Rupes cliff, Uranus on its side |
-| 9 | Neptune → Triton | Cantaloupe terrain and dark nitrogen plumes |
-| 10 | Pluto | The heart-shaped nitrogen plain, Charon fixed in the sky |
-| 11 | Proxima Centauri b | Estimated rocky surface under a red flare star |
-| 12 | TRAPPIST-1 e | Estimated rocky surface, neighbouring planets in the sky |
-| 13 | 51 Pegasi b | Observation deck above a hot Jupiter |
-| 14 | Kepler-452 b | Estimated rocky surface, heavier gravity |
-| 15 | SWEEPS-11 | Observation deck above a hot Jupiter near the Galactic core |
-| 16 | Milky Way | Finale: the galaxy seen from the ship's window |
+| 1 | Dudu Planet | A fictional bonus world with photo boards and a photo moon |
+| 2 | Moon | Lunar surface, lunar module and flag, Earth in a black sky |
+| 3 | Venus | Lava plain in thick orange haze, Venera lander |
+| 4 | Mercury | Cratered ground with long scarps, oversized Sun |
+| 5 | Sun | Heat-shielded observation deck (no solid surface) |
+| 6 | Mars | Red plain, rover, dust devil, Olympus Mons on the horizon |
+| 7 | Jupiter → Europa | Cracked ice, Jupiter and its red spot overhead |
+| 8 | Saturn → Enceladus | Ice geysers, Saturn with its rings seen edge-on |
+| 9 | Uranus → Miranda | Patchwork ice and the Verona Rupes cliff, Uranus on its side |
+| 10 | Neptune → Triton | Cantaloupe terrain and dark nitrogen plumes |
+| 11 | Pluto | The heart-shaped nitrogen plain, Charon fixed in the sky |
+| 12 | Proxima Centauri b | Estimated rocky surface under a red flare star |
+| 13 | TRAPPIST-1 e | Estimated rocky surface, neighbouring planets in the sky |
+| 14 | 51 Pegasi b | Observation deck above a hot Jupiter |
+| 15 | Kepler-452 b | Estimated rocky surface, heavier gravity |
+| 16 | SWEEPS-11 | Observation deck above a hot Jupiter near the Galactic core |
+| 17 | Milky Way | Finale: the galaxy seen from the ship's window |
 
 The Sun and the gas giants have no surface to stand on, so the Sun is visited from a deck and the giants from their moons.
 
