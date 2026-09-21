@@ -43,8 +43,8 @@ The Sun and the gas giants have no surface to stand on, so the Sun is visited fr
 ## Controls
 
 - After landing you keep walking forward. Drag the view to look around and steer.
-- **Jump** uses the local gravity. **Look up / Look down** flips the view. **Info** reopens the fact card. **Photo** saves a PNG.
-- Keyboard: hold `S` / `↓` to pause, `A` `D` / `←` `→` turn, `Q` `E` look up/down, `Space` jump, `N` / `P` next / previous stop.
+- Press `Enter` to jump with the local gravity. **Info** reopens the fact card.
+- Keyboard: hold `S` / `↓` to pause, `A` `D` / `←` `→` turn, `Q` `E` look up/down, `Enter` or `Space` jump, `N` / `P` next / previous stop.
 - Add `?lang=en` or `?lang=zh` to the URL to force a language, `?station=N` to start at a stop.
 
 ## Files
@@ -62,6 +62,6 @@ Data from NASA Solar System Exploration, NASA/JPL Horizons, NASA Exoplanet Archi
 
 第一人稱、積木馬賽克風格的太陽系步行之旅:透過圓形頭盔窗看出去,看見自己的手套與靴子,在真實天體的地表上行走,巨大的行星掛在天上。太陽與氣態巨行星沒有固態地表,因此太陽站改在隔熱觀景艙,木星、土星、天王星、海王星則降落在它們的衛星。
 
-單一 HTML 檔(使用 Three.js)。左上角可切換繁體中文 / English。`index.html` 為步行版,`classic.html` 為第三人稱經典版。降落後太空人會自動一直往前走,拖曳畫面環顧四周並改變方向;「跳」依該天體重力跳躍。
+單一 HTML 檔(使用 Three.js)。左上角可切換繁體中文 / English。`index.html` 為步行版,`classic.html` 為第三人稱經典版。降落後太空人會自動一直往前走,拖曳畫面環顧四周並改變方向;按 Enter 依該天體重力跳躍。
 
 資料出處:NASA Solar System Exploration、NASA/JPL Horizons、NASA Exoplanet Archive、ESA Gaia。場景為積木風格示意圖,距離已縮短,天空中天體大小依真實角直徑估算;系外行星尚無實拍影像,地表外觀為推估。

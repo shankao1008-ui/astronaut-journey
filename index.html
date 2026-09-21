@@ -61,7 +61,6 @@ button:active{transform:scale(.97)}
 button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 button:disabled{opacity:.45;cursor:default}
 #next{background:#FE8A18;color:#1a0d00;font-weight:700;border-color:transparent}
-#jump{min-width:72px}
 #dots{display:flex;gap:6px;pointer-events:auto;flex-wrap:wrap;justify-content:center;max-width:420px}
 #dots button{min-height:0;width:10px;height:10px;padding:0;border-radius:50%;background:rgba(255,255,255,.25);border:0;position:relative;-webkit-backdrop-filter:none;backdrop-filter:none}
 #dots button::before{content:'';position:absolute;inset:-9px}
@@ -112,14 +111,11 @@ footer button{min-height:0;padding:0;background:none;border:0;color:inherit;text
   <div id="card"><div class="site" id="site"></div><div class="stats" id="stats"></div><p class="fact" id="fact"></p><p class="note" id="note"></p></div>
   <div id="bottom">
     <div class="row">
-      <button id="lookBtn" aria-label="看向天空">看向天空</button>
-      <button id="jump" aria-label="跳">跳</button>
       <button id="infoBtn" aria-label="顯示資訊卡">資訊</button>
     </div>
     <div class="row">
       <button id="prev" aria-label="上一站">← 上一站</button>
       <button id="next" aria-label="前往下一站">前往下一站 →</button>
-      <button id="photo" aria-label="拍照並下載">拍照</button>
     </div>
     <div id="dots" role="tablist" aria-label="站點進度"></div>
     <footer><span class="zh">場景為積木風格的示意圖,地形高低與細節為簡化版本。距離已縮短,天空中天體大小依真實角直徑估算。系外行星尚無實拍影像,地表外觀為依大小、溫度與主星推估。<br>
@@ -132,7 +128,7 @@ footer button{min-height:0;padding:0;background:none;border:0;color:inherit;text
     <div class="zh">
     <h2>關於《太空人的太陽系之旅 · 步行版》</h2>
     <p>第一人稱視角的太空人步行旅程。每一站降落在真實可站立的天體上:太陽與氣態巨行星沒有固態地表,所以太陽站改在隔熱觀景艙,木星、土星、天王星、海王星則降落在它們的衛星(木衛二、土衛二、天衛五、海衛一),巨大的行星掛在天上。</p>
-    <p><b>操作</b>:降落後太空人會自動一直往前走;拖曳畫面環顧四周並改變前進方向;「跳」依該天體重力跳躍。鍵盤:S / ↓ 按住暫停前進,A D / ← → 轉向,Q E 抬頭低頭,空白鍵跳,N / P 下一站 / 上一站。</p>
+    <p><b>操作</b>:降落後太空人會自動一直往前走;拖曳畫面環顧四周並改變前進方向;按 Enter 依該天體重力跳躍。鍵盤:S / ↓ 按住暫停前進,A D / ← → 轉向,Q E 抬頭低頭,Enter 或空白鍵跳,N / P 下一站 / 上一站。</p>
     <p><b>誠實標示</b>:場景為積木風格的示意圖;距離已縮短;天空中天體的大小依真實角直徑估算(小於 1.5° 的天體放大到 1.5° 以便辨識);系外行星地表外觀為依大小、溫度與主星推估。作品採用一般積木風格,與任何積木品牌無關。</p>
     <p><b>資料出處</b></p>
     <ul><li>NASA Solar System Exploration(行星與衛星基本資料)</li><li>NASA/JPL Horizons(軌道資料)</li><li>NASA Exoplanet Archive(系外行星參數)</li><li>ESA Gaia(恆星距離)</li><li>相關任務:阿波羅、金星號、新視野號、卡西尼號、朱諾號、航海家 2 號、哈伯太空望遠鏡</li></ul>
@@ -140,7 +136,7 @@ footer button{min-height:0;padding:0;background:none;border:0;color:inherit;text
     <div class="en">
     <h2>About "An Astronaut's Solar System Walk"</h2>
     <p>A first-person walking tour. Every stop lands on a body you could really stand on: the Sun and the gas giants have no solid surface, so the Sun stop stays in a heat-shielded observation deck, and Jupiter, Saturn, Uranus and Neptune are visited from their moons (Europa, Enceladus, Miranda, Triton) with the giant planet hanging in the sky.</p>
-    <p><b>Controls</b>: after landing the astronaut keeps walking forward; drag the view to look around and steer; "Jump" uses the local gravity. Keyboard: hold S / ↓ to pause, A D / ← → turn, Q E look up/down, Space jump, N / P next / previous stop.</p>
+    <p><b>Controls</b>: after landing the astronaut keeps walking forward; drag the view to look around and steer; press Enter to jump with the local gravity. Keyboard: hold S / ↓ to pause, A D / ← → turn, Q E look up/down, Enter or Space jump, N / P next / previous stop.</p>
     <p><b>Honest labelling</b>: scenes are brick-style illustrations; distances are compressed; sky objects use their true angular diameter (objects under 1.5° are enlarged to 1.5° for visibility); exoplanet surfaces are inferred from size, temperature and host star. Generic brick style, unaffiliated with any brick brand.</p>
     <p><b>Sources</b></p>
     <ul><li>NASA Solar System Exploration (planet and moon data)</li><li>NASA/JPL Horizons (orbital data)</li><li>NASA Exoplanet Archive (exoplanet parameters)</li><li>ESA Gaia (stellar distances)</li><li>Missions: Apollo, Venera, New Horizons, Cassini, Juno, Voyager 2, Hubble Space Telescope</li></ul>
@@ -613,14 +609,12 @@ lookEl.addEventListener('pointermove', e => { if (!dragging) return; const dx = 
 const endDrag = () => { dragging = false; lookEl.classList.remove('drag'); }; lookEl.addEventListener('pointerup', endDrag); lookEl.addEventListener('pointercancel', endDrag);
 addEventListener('keydown', e => { const k = e.key.toLowerCase(); if ($('about').classList.contains('open')){ if (k === 'escape') $('about').classList.remove('open'); return; }
   keys[k] = true; if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'pageup', 'pagedown'].includes(k)) e.preventDefault();
-  if (k === ' ') jump(); if (k === 'n') nextStation(); if (k === 'p') go(idx - 1); if (k === 'i') toggleCard(); });
+  if (k === ' ' || k === 'enter'){ e.preventDefault(); jump(); } if (k === 'n') nextStation(); if (k === 'p') go(idx - 1); if (k === 'i') toggleCard(); });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
-$('jump').addEventListener('click', jump);
-let lookUp = false; $('lookBtn').addEventListener('click', () => { lookUp = !lookUp; player.pitch = lookUp ? 34 * D2R : -30 * D2R; $('lookBtn').textContent = lookUp ? T().lookDown : T().lookUp; });
+let lookUp = false;
 let cardPinned = false; const card = $('card');
 function toggleCard(){ card.classList.toggle('hide'); cardPinned = !card.classList.contains('hide'); }
 $('infoBtn').addEventListener('click', toggleCard);
-$('photo').addEventListener('click', () => { try { renderer.render(scene, camera); canvas.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `astronaut-${cur ? cur.id : 'shot'}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }); } catch (e) {} });
 $('aboutBtn').addEventListener('click', () => $('about').classList.add('open')); $('aboutClose').addEventListener('click', () => $('about').classList.remove('open'));
 $('about').addEventListener('click', e => { if (e.target === $('about')) $('about').classList.remove('open'); });
 
@@ -657,7 +651,7 @@ function flightDuration(a, b){ const A = ST[a], Bs = ST[b]; let delta; if (A.au 
 function go(to, jumpTo){
   if (trans.active || to < 0 || to >= ST.length || to === idx) return;
   trans.active = true; trans.from = idx; trans.to = to; trans.jump = !!jumpTo; trans.t0 = performance.now() / 1000; trans.dur = jumpTo ? (RM ? 3 : 4.5) : flightDuration(idx, to); trans.phase = '';
-  card.classList.add('hide'); ['jump', 'next', 'prev', 'lookBtn'].forEach(id => $(id).disabled = true); $('next').textContent = T().flying;
+  card.classList.add('hide'); ['next', 'prev'].forEach(id => $(id).disabled = true); $('next').textContent = T().flying;
   const fromKey = DEPART[ST[idx].id] || FULL[ST[idx].id]; if (fromKey){ discFrom = makeDisc(fromKey, 1); discFrom.position.set(0, -.3, -30); discFrom.scale.set(60, 60, 1); }
   const toKey = FULL[ST[to].id]; if (toKey){ discTo = makeDisc(toKey, FULL_ASPECT[ST[to].id] || 1, toKey === 'sun'); discTo.position.set(0, .2, -60); discTo.scale.set(.1, .1, 1); }
   $('stSub').textContent = `${to > idx ? T().heading : T().back} ${nameOf(ST[to])}`;
@@ -695,7 +689,7 @@ function arrive(){
 }
 function enterStation(){
   terrain = cur.mode === 'deck' ? TERRAIN.deck : TERRAIN[cur.id]; footprints.clear();
-  player.x = .5; player.z = .5; player.yaw = 0; player.pitch = -6 * D2R; player.jumpY = 0; player.vy = 0; player.phase = 0; lookUp = false; $('lookBtn').textContent = T().lookUp;
+  player.x = .5; player.z = .5; player.yaw = 0; player.pitch = -6 * D2R; player.jumpY = 0; player.vy = 0; player.phase = 0; lookUp = false;
   gridCenter = [1e9, 1e9]; rebuildGrid(0, 0); player.camY = groundAt(player.x, player.z) + EYE;
   buildSky(cur); buildProps(cur); cstate.x = 2; cstate.z = -8; cstate.wave = 0;
   cardPinned = false; card.classList.remove('hide');
@@ -733,10 +727,9 @@ function updateUI(){
   const st = cur, t = T(); $('stName').innerHTML = LANG === 'en' ? `${st.en}<small>${st.name}</small>` : `${st.name}<small>${st.en}</small>`; $('stSub').textContent = `${L(st, 'type')} · ${distText(st)}`;
   $('site').textContent = L(st, 'site'); $('stats').innerHTML = L(st, 'stats').map(([k, v]) => `<div>${k}<b>${v}</b></div>`).join(''); $('fact').textContent = L(st, 'fact');
   $('note').textContent = st.id === 'dudu' ? (LANG === 'en' ? 'Dudu Planet is fictional; the photos were provided by the author' : '嘟嘟星球為虛構星球;照片由作者提供') : st.ly != null && st.mode !== 'finale' ? t.exoNote : st.mode === 'finale' ? t.finNote : t.solNote + (st.mode === 'deck' ? t.deckNote : '');
-  $('title').textContent = t.title; $('jump').textContent = t.jump; $('infoBtn').textContent = t.info; $('prev').textContent = t.prev; $('photo').textContent = t.photo; $('lookBtn').textContent = lookUp ? t.lookDown : t.lookUp;
+  $('title').textContent = t.title; $('infoBtn').textContent = t.info; $('prev').textContent = t.prev;
   const fin = st.mode === 'finale'; if (fin) card.classList.add('hide');
-  $('jump').disabled = fin; $('lookBtn').disabled = fin;
-  $('next').disabled = false; $('prev').disabled = idx === 0; $('next').textContent = fin ? t.restart : idx === ST.length - 2 ? t.toGalaxy : t.next; $('next').setAttribute('aria-label', $('next').textContent);
+    $('next').disabled = false; $('prev').disabled = idx === 0; $('next').textContent = fin ? t.restart : idx === ST.length - 2 ? t.toGalaxy : t.next; $('next').setAttribute('aria-label', $('next').textContent);
   [...$('dots').children].forEach((d, i) => { d.classList.toggle('on', i === idx); d.classList.toggle('done', i < idx); d.setAttribute('aria-selected', i === idx ? 'true' : 'false'); d.setAttribute('aria-label', t.gotoStop(i + 1, nameOf(ST[i]))); d.title = nameOf(ST[i]); });
   setCounter(distLy(st), st);
 }
