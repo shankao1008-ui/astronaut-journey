@@ -36,7 +36,7 @@ The Sun and the gas giants have no surface to stand on, so the Sun is visited fr
 - First-person view with helmet frame, animated gloves and boots, head bob and footprints
 - Gravity that matters: jumps on Enceladus and Miranda last seconds; Kepler-452 b feels heavy
 - Sky objects drawn as pixel mosaics at their true angular diameter (objects under 1.5° are enlarged to 1.5° for visibility)
-- First-person ship transitions: boarding, takeoff, warp with an AU / light-year counter, approach and landing
+- First-person ship transitions: boarding, takeoff, warp with an AU / light-year counter, approach, then a landing sequence that scans the real terrain, marks a safe site and levels the lander's four legs on uneven ground (skippable)
 - A brick companion astronaut who walks ahead and waves
 - Touch and keyboard controls, portrait and landscape layouts, reduced-motion support, automatic quality scaling
 

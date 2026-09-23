@@ -63,7 +63,9 @@ Line numbers are approximate. Section headers in the code look like `/* ===== �
 
 ## 5. Transition behaviour
 
-Next stop → fade to black → cockpit view (takeoff shake, departure body shrinking) → warp streaks with the log-interpolated AU / light-year counter → destination body growing as a mosaic disc → fade → new station, landing banner "已降落 X / Landed on X" for ~4 s, info card shows then hides after 7 s. No captions are shown during the flight (removed on request). Duration 6–10 s by distance; jumps via dots use a 4.5 s version.
+Next stop → fade to black → cockpit view (takeoff shake, departure body shrinking) → warp streaks with the log-interpolated AU / light-year counter → destination body growing as a mosaic disc → **landing sequence (walk stations only)** → new station, landing banner "已降落 X / Landed on X" for ~4 s, info card shows then hides after 7 s. No captions are shown during the flight (removed on request). Duration 6–10 s by distance; jumps via dots use a 4.5 s version.
+
+**Landing sequence** (section 降落場景 in the code; state object `landing`, functions `startLanding / updateLanding / finishLanding`): at `f ≥ .9` of a flight to a `mode: 'walk'` station, the destination's `TERRAIN[id]` is pre-built into a light 20×20 preview grid (`landerBlocks/landerStuds`, `LGRID`) and shown from a third-person aerial camera. Phases over `landing.dur` (8 s, 4 s with reduced motion, ×0.7 for dot jumps): ① 0–.3 scan grid + moving scan line; ② .3–.5 green ✓ on the chosen site and red ✕ on the roughest samples; ③ .5–.75 the brick lander slides in and descends; ④ .75–1 the four legs extend to different lengths read from `landingTerrain.h()` so the body stays level, thrust cuts, dust particles and a small camera shake on touchdown. Then `arrive()` runs as before. Site choice: sample a 7×7 set of points 2 blocks apart, prefer a spot with height spread ≤ 1 block (levellable) and the largest spread among those, so levelling is visible. A "Skip landing" button (`#skipLanding`) jumps to the end. Deck stations (Sun, 51 Peg b, SWEEPS-11) never trigger it. Reduced motion skips ① and ② and removes the shake.
 
 ## 6. How to make common changes
 
@@ -76,7 +78,7 @@ Next stop → fade to black → cockpit view (takeoff shake, departure body shri
 
 ## 7. Testing and deploying
 
-- Open `index.html` directly in a browser (needs internet for Three.js). URL parameters for testing: `?station=N`, `?lang=en|zh`, `?look=<pitch deg>`, `?yaw=<deg>`, `?fly=1` (auto-launch next leg).
+- Open `index.html` directly in a browser (needs internet for Three.js). URL parameters for testing: `?station=N`, `?lang=en|zh`, `?look=<pitch deg>`, `?yaw=<deg>`, `?fly=1` (auto-launch next leg), `?station=N&landk=0.62` (freeze the landing sequence at progress k for that station; `landk=1` plays the very end).
 - Syntax check without a browser: extract the script and run `node --check`.
 - Headless screenshots (macOS Chrome): add `--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --virtual-time-budget=5000 --screenshot=out.png`. Headless Chrome enforces a ~500 px minimum width, so test portrait layouts inside a 390 px iframe wrapper.
 - Deploy: commit and push to `main`; GitHub Pages updates in about a minute.

@@ -20,6 +20,8 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;image-rend
 #helmet::after{content:'';position:absolute;inset:-7vh -3vw;border-radius:50%;
   background:radial-gradient(ellipse at 22% 18%,rgba(255,255,255,.16) 0,rgba(255,255,255,.05) 18%,rgba(255,255,255,0) 30%),
              radial-gradient(ellipse at 80% 85%,rgba(255,255,255,.08) 0,rgba(255,255,255,0) 22%)}
+#skipLanding{position:fixed;left:50%;bottom:calc(120px + var(--pb));transform:translateX(-50%);z-index:6;display:none;min-height:40px;padding:0 18px;font-size:13px;background:rgba(20,24,40,.75);border:1px solid rgba(255,255,255,.3);border-radius:999px;color:#fff}
+#skipLanding.show{display:block}
 #fade{position:fixed;inset:0;z-index:4;background:#000;opacity:0;pointer-events:none;transition:opacity .4s}
 #phase{position:fixed;left:0;right:0;top:26%;z-index:5;text-align:center;font-size:clamp(20px,4vw,34px);font-weight:600;letter-spacing:.1em;opacity:0;transition:opacity .3s;pointer-events:none;text-shadow:0 2px 20px #000}
 #phase small{display:block;font-size:.45em;font-weight:400;opacity:.85;margin-top:8px;letter-spacing:.05em}
@@ -100,6 +102,7 @@ footer button{min-height:0;padding:0;background:none;border:0;color:inherit;text
 <div id="helmet" aria-hidden="true"></div>
 <div id="fade" aria-hidden="true"></div>
 <div id="phase" aria-live="polite"></div>
+<button id="skipLanding" aria-label="跳過降落 / Skip landing"><span class="zh">跳過降落 ›</span><span class="en">Skip landing ›</span></button>
 <div id="finale" aria-hidden="true"></div>
 <div id="ui">
   <div id="top">
@@ -640,6 +643,8 @@ function updateStreaks(dt, speed, warp){
 }
 // 出發地 / 目的地大圖
 let discFrom = null, discTo = null;
+let landingTerrain = null;
+function prepareLandingTerrain(id){ landingTerrain = TERRAIN[id] || null; }
 const FULL = { earth: 'earth', dudu: 'dudu', moon: 'moon', venus: 'venus', mercury: 'mercury', sun: 'sun', mars: 'mars', europa: 'jupiter', enceladus: 'saturn', miranda: 'uranusFull', triton: 'neptune', pluto: 'pluto', 'proxima-b': 'rocky', 'trappist-1e': 'rockyBlue', '51-peg-b': 'hotJupiter', 'kepler-452b': 'rockyGreen', 'sweeps-11': 'hotJupiter', finale: null };
 const FULL_ASPECT = { europa: 1, enceladus: 2.4, miranda: 1 };
 const DEPART = { europa: 'europa', enceladus: 'enceladus', miranda: 'miranda', triton: 'triton', sun: 'sun', '51-peg-b': 'hotJupiter', 'sweeps-11': 'hotJupiter' };
@@ -653,6 +658,8 @@ function go(to, jumpTo){
   trans.active = true; trans.from = idx; trans.to = to; trans.jump = !!jumpTo; trans.t0 = performance.now() / 1000; trans.dur = jumpTo ? (RM ? 3 : 4.5) : flightDuration(idx, to); trans.phase = '';
   card.classList.add('hide'); ['next', 'prev'].forEach(id => $(id).disabled = true); $('next').textContent = T().flying;
   const fromKey = DEPART[ST[idx].id] || FULL[ST[idx].id]; if (fromKey){ discFrom = makeDisc(fromKey, 1); discFrom.position.set(0, -.3, -30); discFrom.scale.set(60, 60, 1); }
+  if (ST[to].mode === 'walk') prepareLandingTerrain(ST[to].id); else landingTerrain = null;
+  landing.active = false; landing.done = false; landing.dur = (RM ? 4 : 8) * (jumpTo ? .7 : 1);
   const toKey = FULL[ST[to].id]; if (toKey){ discTo = makeDisc(toKey, FULL_ASPECT[ST[to].id] || 1, toKey === 'sun'); discTo.position.set(0, .2, -60); discTo.scale.set(.1, .1, 1); }
   $('stSub').textContent = `${to > idx ? T().heading : T().back} ${nameOf(ST[to])}`;
 }
@@ -667,21 +674,24 @@ function updateTransition(now, dt){
   // 階段:登船 0–.1 | 起飛 .1–.3 | 曲速 .3–.7 | 接近 .7–.9 | 降落 .9–1
   if (f < .1){ fade.style.opacity = Math.min(1, f / .06); }
   else {
-    if (!cockpit.visible){ cockpit.visible = true; streaks.visible = true; world.visible = false; skyG.visible = false; handsG.visible = false; bootsG.visible = false; scene.fog = null; scene.background = new THREE.Color(0x02030a); camera.rotation.x = 0; rig.rotation.y = 0; }
-    const shake = RM ? 0 : (f < .3 ? Math.sin(now * 40) * .01 * (1 - (f - .1) / .2) : f > .9 ? Math.sin(now * 40) * .006 : 0); camera.position.set(shake, EYE + shake * .7, 0);
+    if (!cockpit.visible && !landing.active && !landing.done){ cockpit.visible = true; streaks.visible = true; world.visible = false; skyG.visible = false; handsG.visible = false; bootsG.visible = false; scene.fog = null; scene.background = new THREE.Color(0x02030a); camera.rotation.x = 0; rig.rotation.y = 0; }
+    if (!landing.active && !landing.done){ const shake = RM ? 0 : (f < .3 ? Math.sin(now * 40) * .01 * (1 - (f - .1) / .2) : f > .9 ? Math.sin(now * 40) * .006 : 0); camera.position.set(shake, EYE + shake * .7, 0); }
     if (f < .3){ const k = (f - .1) / .2; fade.style.opacity = Math.max(0, 1 - k * 4); if (discFrom){ const s = lerp(60, 4, ease(k)); discFrom.scale.set(s, s, 1); discFrom.position.set(lerp(0, 8, k), lerp(-.3, -10, ease(k)), -30); } updateStreaks(dt, 30 + k * 60, .3); }
     else if (f < .7){ const k = (f - .3) / .4; if (discFrom){ discFrom.material.opacity = Math.max(0, 1 - k * 5); } const w = Math.sin(k * Math.PI); updateStreaks(dt, 200 + w * 900, .5 + w); scene.background.setHex(0x0a0620).lerp(new THREE.Color(0x02030a), 1 - w * .8); }
     else if (f < .9){ const k = (f - .7) / .2; if (discFrom) discFrom.visible = false; updateStreaks(dt, lerp(200, 20, k), .3);
       if (discTo){ const s = lerp(.5, 70, ease(k)); discTo.scale.set(s * discTo.userData.mz.aspect, s, 1); discTo.position.set(0, .2 + k * 2, -60); if (discTo.userData.anim) { discTo.userData.mz.draw(now); discTo.userData.mz.tex.needsUpdate = true; } } }
+    else if (toSt.mode === 'walk'){ if (!landing.active && !landing.done) startLanding(); }
     else { const k = (f - .9) / .1; fade.style.opacity = Math.min(1, k * 3); updateStreaks(dt, 10, .2); }
     // 距離計數器
-    const a = distLy(fromSt), b = distLy(toSt); const p = clamp((f - .1) / .8, 0, 1); setCounter(Math.exp(lerp(Math.log(a), Math.log(b), ease(p))), p > .9 ? toSt : null);
+    if (!landing.active && !landing.done){ const a = distLy(fromSt), b = distLy(toSt); const p = clamp((f - .1) / .8, 0, 1); setCounter(Math.exp(lerp(Math.log(a), Math.log(b), ease(p))), p > .9 ? toSt : null); }
     if (streaks.visible) streaks.material.opacity = f < .3 ? .3 : f < .7 ? .9 : .4;
   }
-  if (f >= 1) arrive();
+  if (landing.active) updateLanding(now);
+  if (toSt.mode === 'walk' && f >= .9){ if (landing.done) arrive(); }
+  else if (f >= 1) arrive();
 }
 function arrive(){
-  trans.active = false; idx = trans.to; cur = ST[idx];
+  trans.active = false; idx = trans.to; cur = ST[idx]; landing.done = false; landingG.visible = false; $('skipLanding').classList.remove('show');
   if (discFrom){ camera.remove(discFrom); discFrom.material.map.dispose(); discFrom = null; } if (discTo){ camera.remove(discTo); discTo.material.map.dispose(); discTo = null; }
   if (cur.mode === 'finale'){ startFinale(); }
   else { cockpit.visible = false; streaks.visible = false; world.visible = true; skyG.visible = true; handsG.visible = true; bootsG.visible = cur.mode !== 'deck' || true; enterStation(); }
@@ -694,6 +704,117 @@ function enterStation(){
   buildSky(cur); buildProps(cur); cstate.x = 2; cstate.z = -8; cstate.wave = 0;
   cardPinned = false; card.classList.remove('hide');
 }
+/* ============================================================ 降落場景:地形掃描 + 起落架調平 */
+const LGRID = 20;
+const landingG = new THREE.Group(); landingG.visible = false; scene.add(landingG);
+let landerBlocks = null, landerStuds = null;
+function buildLanderGrid(){
+  const g = new THREE.BoxGeometry(1, 1, 1); g.translate(0, .5, 0);
+  landerBlocks = new THREE.InstancedMesh(g, new THREE.MeshLambertMaterial({ color: 0xffffff }), LGRID * LGRID);
+  landerStuds = new THREE.InstancedMesh(new THREE.CylinderGeometry(.27, .27, .16, 6), new THREE.MeshLambertMaterial({ color: 0xffffff }), LGRID * LGRID);
+  landerBlocks.frustumCulled = false; landerStuds.frustumCulled = false; landingG.add(landerBlocks); landingG.add(landerStuds);
+}
+function fillLanderGrid(terrainDef){
+  const half = LGRID >> 1; let i = 0;
+  for (let gz = 0; gz < LGRID; gz++) for (let gx = 0; gx < LGRID; gx++, i++){
+    const x = gx - half, z = gz - half; const h = terrainDef.h(x, z);
+    if (h == null){ dummy.position.set(0, -999, 0); dummy.scale.set(0, 0, 0); dummy.updateMatrix(); landerBlocks.setMatrixAt(i, dummy.matrix); landerStuds.setMatrixAt(i, dummy.matrix); continue; }
+    dummy.position.set(x + .5, BASE, z + .5); dummy.scale.set(1, h - BASE, 1); dummy.updateMatrix(); landerBlocks.setMatrixAt(i, dummy.matrix);
+    dummy.position.set(x + .5, h + .08, z + .5); dummy.scale.set(1, 1, 1); dummy.updateMatrix(); landerStuds.setMatrixAt(i, dummy.matrix);
+    colTmp.setHex(terrainDef.c(x, z, h)); landerBlocks.setColorAt(i, colTmp); landerStuds.setColorAt(i, colTmp);
+  }
+  landerBlocks.instanceMatrix.needsUpdate = true; landerStuds.instanceMatrix.needsUpdate = true; landerBlocks.instanceColor.needsUpdate = true; landerStuds.instanceColor.needsUpdate = true;
+}
+// 降落載具:4 支腳可各自伸縮,頂端固定在底盤
+const craft = new THREE.Group(); craft.visible = false; landingG.add(craft);
+const craftLegs = [], LEG_POS = [[-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5]];
+(() => { box(craft, 0, 0, 0, 3.4, 1.4, 3.4, P.yellow); box(craft, 0, .3, 0, 3.8, .8, 3.8, P.dorange); box(craft, 0, 1.4, 0, 2.4, 1.6, 2.4, P.lgrey); box(craft, 0, 1.7, 1.25, 1.2, .8, .1, P.black); box(craft, 0, 3, 0, .1, 1.2, .1, P.lgrey); box(craft, 0, 4.1, 0, .8, .1, .8, P.white);
+  for (const [lx, lz] of LEG_POS){ const lg = new THREE.Group(); lg.position.set(lx, 0, lz); const leg = new THREE.Mesh(boxGeo, mat(P.lgrey)); leg.scale.set(.3, 1, .3); const pad = new THREE.Mesh(boxGeo, mat(P.dgrey)); pad.scale.set(.9, .2, .9); lg.add(leg); lg.add(pad); craft.add(lg); craftLegs.push({ g: lg, leg, pad }); }
+  const flame = new THREE.Mesh(boxGeo, new THREE.MeshBasicMaterial({ color: 0xFE8A18, transparent: true, opacity: .85 })); flame.name = 'flame'; flame.scale.set(.8, 1.5, .8); flame.position.set(0, -.75, 0); craft.add(flame); })();
+function setLeg(i, len){ const L = Math.max(.05, len); craftLegs[i].leg.scale.y = L; craftLegs[i].leg.position.y = -L / 2; craftLegs[i].pad.position.y = -L - .1; }
+// 掃描網格、掃描線、標記
+const scanGrid = new THREE.GridHelper(LGRID, LGRID, 0x4dffa0, 0x4dffa0); scanGrid.material.transparent = true; scanGrid.material.opacity = .45; scanGrid.visible = false; landingG.add(scanGrid);
+const scanLine = new THREE.Mesh(new THREE.PlaneGeometry(LGRID, .7), new THREE.MeshBasicMaterial({ color: 0x9dffc4, transparent: true, opacity: .7, side: THREE.DoubleSide })); scanLine.rotation.x = -Math.PI / 2; scanLine.visible = false; landingG.add(scanLine);
+function markerTex(ok){ const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d'); c.lineWidth = 6; c.strokeStyle = ok ? '#3dff7a' : '#ff4d4d'; c.strokeRect(6, 6, 52, 52); c.lineWidth = 7; c.beginPath();
+  if (ok){ c.moveTo(16, 34); c.lineTo(28, 46); c.lineTo(50, 20); } else { c.moveTo(18, 18); c.lineTo(46, 46); c.moveTo(46, 18); c.lineTo(18, 46); } c.stroke(); const t = new THREE.CanvasTexture(cv); t.magFilter = t.minFilter = THREE.NearestFilter; return t; }
+const markerOk = new THREE.Sprite(new THREE.SpriteMaterial({ map: markerTex(true), transparent: true, depthTest: false })); markerOk.scale.set(2.6, 2.6, 1); markerOk.visible = false; landingG.add(markerOk);
+const markersBad = [0, 1, 2].map(() => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: markerTex(false), transparent: true, depthTest: false })); sp.scale.set(2.2, 2.2, 1); sp.visible = false; landingG.add(sp); return sp; });
+let dustPts = null, dustVel = null;
+function spawnDust(x, y, z){ const n = 90, pos = new Float32Array(n * 3); dustVel = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++){ const a = Math.random() * TAU, sp = 3 + Math.random() * 5; pos[i * 3] = x; pos[i * 3 + 1] = y + .2; pos[i * 3 + 2] = z; dustVel[i * 3] = Math.cos(a) * sp; dustVel[i * 3 + 1] = 1 + Math.random() * 2.5; dustVel[i * 3 + 2] = Math.sin(a) * sp; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); dustPts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xC9B8A5, size: 4, sizeAttenuation: false, transparent: true, opacity: .9 })); landingG.add(dustPts); }
+function clearDust(){ if (dustPts){ landingG.remove(dustPts); dustPts.geometry.dispose(); dustPts = null; } }
+
+const landing = { active: false, done: false, t0: 0, dur: RM ? 4 : 8, chosen: { x: 0, z: 0 }, legY: [0, 0, 0, 0], legTarget: [0, 0, 0, 0], bodyY: 0, cands: [], dusted: false, lastT: 0 };
+const lookTmp = new THREE.Vector3();
+function startLanding(){
+  const toSt = ST[trans.to];
+  landing.active = true; landing.done = false; landing.t0 = performance.now() / 1000; landing.dusted = false; landing.lastT = landing.t0;
+  if (!landerBlocks) buildLanderGrid();
+  if (landingTerrain) fillLanderGrid(landingTerrain);
+  landerBlocks.visible = landerStuds.visible = !!landingTerrain;
+  // 候選落點:在 -6..6 找最平坦的一格
+  let best = { x: 0, z: 0, rough: 1e9 }; const cands = [];
+  if (landingTerrain){
+    for (let tx = -6; tx <= 6; tx += 2) for (let tz = -6; tz <= 6; tz += 2){
+      const hs = [landingTerrain.h(tx - 1, tz - 1), landingTerrain.h(tx + 1, tz - 1), landingTerrain.h(tx - 1, tz + 1), landingTerrain.h(tx + 1, tz + 1)].map(v => v == null ? 0 : v);
+      const rough = Math.max(...hs) - Math.min(...hs); cands.push({ x: tx, z: tz, rough, h: Math.max(...hs) });
+    }
+    // 安全落點:高度差 ≤ 1(可調平);其中優先選高度差最大者,讓起落架調平看得見;都不安全則選最平的
+    const safe = cands.filter(c => c.rough <= 1 && c.rough > 0).sort((a, b) => b.rough - a.rough || Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z));
+    const pick = safe[0] || cands.slice().sort((a, b) => a.rough - b.rough || Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
+    if (pick) best = { x: pick.x, z: pick.z, rough: pick.rough };
+  }
+  landing.chosen = best; landing.cands = cands.filter(c => !(c.x === best.x && c.z === best.z)).sort((a, b) => b.rough - a.rough).slice(0, 3);
+  // 起落架目標長度:頂端同高,腳長 = 機身高 - 各腳下方地形高
+  const hs = LEG_POS.map(([lx, lz]) => { const v = landingTerrain ? landingTerrain.h(best.x + Math.sign(lx), best.z + Math.sign(lz)) : 0; return v == null ? 0 : v; });
+  const hmax = Math.max(...hs); landing.bodyY = hmax + 1.3; landing.legTarget = hs.map(h => landing.bodyY - h - .1);
+  // 場景切換:離開駕駛艙,顯示目的地天空與預覽地形
+  cockpit.visible = false; streaks.visible = false; world.visible = false; handsG.visible = false; bootsG.visible = false;
+  buildSky(toSt); skyG.visible = true; scene.fog = null;
+  landingG.visible = true; craft.visible = true; craft.position.set(best.x + 16, 22, best.z - 8); craftLegs.forEach((_, i) => setLeg(i, .6));
+  scanGrid.visible = scanLine.visible = markerOk.visible = false; markersBad.forEach(m => m.visible = false); clearDust();
+  const gh = landingTerrain ? (landingTerrain.h(0, 0) || 0) : 0; scanGrid.position.y = gh + 3.2; scanLine.position.y = gh + 2.6;
+  rig.position.set(0, 0, 0); rig.rotation.y = 0; camera.position.set(0, 26, 14); camera.lookAt(0, gh, 0);
+  setCounter(distLy(toSt), toSt);
+  $('fade').style.opacity = 1; $('skipLanding').classList.add('show');
+}
+function updateLanding(now){
+  if (!landing.active) return;
+  const dt = Math.min(.05, now - landing.lastT); landing.lastT = now;
+  const k = clamp((now - landing.t0) / landing.dur, 0, 1); const c = landing.chosen; const gh = landingTerrain ? (landingTerrain.h(0, 0) || 0) : 0;
+  const fade = $('fade'); fade.style.opacity = k < .06 ? 1 - k / .06 : k > .94 ? (k - .94) / .06 : 0;
+  // 減少動態:跳過①②,只播 ③④
+  const p3s = RM ? 0 : .5, p3e = RM ? .5 : .75, p4e = 1;
+  if (!RM){
+    // ① 0–.3 高空掃描
+    scanGrid.visible = k < .5; scanGrid.material.opacity = k < .3 ? .45 : .45 * (1 - (k - .3) / .2);
+    scanLine.visible = k < .3; scanLine.position.z = lerp(-LGRID / 2, LGRID / 2, (k / .3) % 1);
+    // ② .3–.5 標記候選點
+    const showM = k >= .3 && k < .75; markerOk.visible = showM; markerOk.position.set(c.x, (landingTerrain ? (landingTerrain.h(c.x, c.z) || 0) : 0) + 1.6 + Math.sin(now * 3) * .15, c.z);
+    markersBad.forEach((m, i) => { const cd = landing.cands[i]; m.visible = showM && !!cd && k > .3 + i * .05; if (cd) m.position.set(cd.x, cd.h + 1.4, cd.z); });
+    if (k < .5){ camera.position.set(0, 26, 14); camera.lookAt(0, gh, 0); }
+  }
+  // ③ 側移修正,持續下降
+  if (k >= p3s && k < p3e){ const u = ease((k - p3s) / (p3e - p3s)); craft.position.set(lerp(c.x + 16, c.x, u), lerp(22, landing.bodyY + 7, u), lerp(c.z - 8, c.z, u));
+    lookTmp.set(lerp(0, c.x + 10, u), lerp(26, landing.bodyY + 9, u), lerp(14, c.z + 12, u)); camera.position.copy(lookTmp); camera.lookAt(craft.position.x, lerp(gh, craft.position.y, .45), craft.position.z); }
+  // ④ 起落架調平 → 觸地
+  if (k >= p3e){ const u = ease((k - p3e) / (p4e - p3e)); craft.position.set(c.x, lerp(landing.bodyY + 7, landing.bodyY, Math.min(1, u * 1.08)), c.z);
+    landing.legY = landing.legTarget.map(tl => lerp(.6, tl, u)); landing.legY.forEach((L, i) => setLeg(i, L));
+    camera.position.set(c.x + 9.5, landing.bodyY + 6.5, c.z + 9.5); camera.lookAt(c.x, lerp(landing.bodyY + 4, landing.bodyY + 1.2, u), c.z);
+    if (u >= .97 && !landing.dusted){ landing.dusted = true; spawnDust(c.x, landing.bodyY - Math.max(...landing.legTarget), c.z); }
+    if (!RM && u > .96) camera.position.x += (Math.random() - .5) * .18, camera.position.y += (Math.random() - .5) * .12; }
+  const flame = craft.getObjectByName('flame'); if (flame){ const thrust = k < p4e - .04 ? .8 + Math.random() * .5 : 0; flame.visible = thrust > 0; flame.scale.set(.8, 1.5 * thrust, .8); flame.position.y = -.75 * thrust; }
+  if (dustPts){ const a = dustPts.geometry.attributes.position; for (let i = 0; i < dustVel.length / 3; i++){ a.array[i * 3] += dustVel[i * 3] * dt; a.array[i * 3 + 1] += dustVel[i * 3 + 1] * dt; a.array[i * 3 + 2] += dustVel[i * 3 + 2] * dt; dustVel[i * 3 + 1] -= 4 * dt; } a.needsUpdate = true; dustPts.material.opacity = Math.max(0, dustPts.material.opacity - dt * 1.2); }
+  if (k >= 1) finishLanding();
+}
+function finishLanding(){
+  landing.active = false; landing.done = true; landingG.visible = false; craft.visible = false; clearDust();
+  landerBlocks && (landerBlocks.visible = landerStuds.visible = false);
+  camera.position.set(0, EYE, 0); camera.rotation.set(0, 0, 0); $('skipLanding').classList.remove('show');
+}
+$('skipLanding').addEventListener('click', () => { if (landing.active){ landing.t0 = performance.now() / 1000 - landing.dur; updateLanding(performance.now() / 1000); } });
+
 /* ============================================================ 結尾:銀河系 */
 let galaxy = null, finaleT0 = 0;
 function startFinale(){
@@ -760,7 +881,9 @@ resize(); buildInstances();
 try { const q = parseInt(new URLSearchParams(location.search).get('station'), 10); if (q >= 0 && q < ST.length) idx = q; } catch (e) {}
 cur = ST[idx]; if (cur.mode === 'finale'){ startFinale(); } else enterStation();
 arrivedAt = performance.now(); setLang(LANG); requestAnimationFrame(frame);
-try { const sp = new URLSearchParams(location.search); if (sp.get('fly')) setTimeout(() => nextStation(), 500); if (sp.get('look')){ player.pitch = parseFloat(sp.get('look')) * D2R; } if (sp.get('yaw')){ player.yaw = parseFloat(sp.get('yaw')) * D2R; } } catch (e) {}
+try { const sp = new URLSearchParams(location.search); if (sp.get('fly')) setTimeout(() => nextStation(), 500); if (sp.get('look')){ player.pitch = parseFloat(sp.get('look')) * D2R; } if (sp.get('yaw')){ player.yaw = parseFloat(sp.get('yaw')) * D2R; }
+  if (sp.get('landk') != null && cur.mode === 'walk'){ // 測試用:凍結降落動畫在進度 k
+    const k = parseFloat(sp.get('landk')); trans.active = true; trans.from = Math.max(0, idx - 1); trans.to = idx; trans.t0 = performance.now() / 1000 - 100; trans.dur = 1; prepareLandingTerrain(cur.id); startLanding(); landing.dur = k >= 1 ? 1 : 1e5; landing.t0 = performance.now() / 1000 - k * landing.dur; } } catch (e) {}
 })();
 </script>
 </body>
