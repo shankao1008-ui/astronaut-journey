@@ -356,6 +356,12 @@ const TERRAIN = {
   deck: { h: (x, z) => (Math.abs(x) <= 7 && Math.abs(z) <= 5) ? 0 : null, c: (x, z) => ((Math.floor(x) + Math.floor(z)) % 2 ? P.lgrey : P.dgrey) }
 };
 
+// 降落坪:每個步行站(嘟嘟星球除外,它以平坦小路當降落坪)在固定位置鋪一塊圓形平台,樣式同地球發射台
+const PAD = { x: -3, z: 3, r: 3.5 };
+const PAD_SKIP = new Set(['dudu', 'earth', 'deck']);
+const inPad = (x, z) => (x + .5 - PAD.x) ** 2 + (z + .5 - PAD.z) ** 2 < PAD.r * PAD.r;
+for (const id of Object.keys(TERRAIN)){ if (PAD_SKIP.has(id)) continue; const t = TERRAIN[id]; const h0raw = t.h(PAD.x, PAD.z); const h0 = h0raw == null ? 0 : Math.max(0, h0raw);
+  TERRAIN[id] = { h: (x, z) => inPad(x, z) ? h0 : t.h(x, z), c: (x, z, h) => inPad(x, z) ? ((Math.floor(x) + Math.floor(z)) % 2 ? P.lgrey : P.dgrey) : t.c(x, z, h), pad: true }; }
 /* ============================================================ 渲染器與場景 */
 const canvas = $('gl');
 let renderer; try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' }); } catch (e){ $('err').style.display = 'flex'; $('err').firstElementChild.textContent = '此裝置或瀏覽器不支援 WebGL。'; return; }
@@ -768,6 +774,7 @@ function startLanding(){
     const safe = cands.filter(c => c.rough <= 1 && c.rough > 0).sort((a, b) => b.rough - a.rough || Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z));
     const pick = safe[0] || cands.slice().sort((a, b) => a.rough - b.rough || Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
     if (pick) best = { x: pick.x, z: pick.z, rough: pick.rough };
+    if (landingTerrain.pad) best = { x: PAD.x, z: PAD.z, rough: 0 }; else if (toSt.id === 'earth') best = { x: 0, z: 0, rough: 0 };
   }
   landing.chosen = best; landing.cands = cands.filter(c => !(c.x === best.x && c.z === best.z)).sort((a, b) => b.rough - a.rough).slice(0, 3);
   // 起落架目標長度:頂端同高,腳長 = 機身高 - 各腳下方地形高
