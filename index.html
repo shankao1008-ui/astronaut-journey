@@ -356,12 +356,6 @@ const TERRAIN = {
   deck: { h: (x, z) => (Math.abs(x) <= 7 && Math.abs(z) <= 5) ? 0 : null, c: (x, z) => ((Math.floor(x) + Math.floor(z)) % 2 ? P.lgrey : P.dgrey) }
 };
 
-// 降落坪:每個步行站(嘟嘟星球除外,它以平坦小路當降落坪)在固定位置鋪一塊圓形平台,樣式同地球發射台
-const PAD = { x: -3, z: 3, r: 3.5 };
-const PAD_SKIP = new Set(['dudu', 'earth', 'deck']);
-const inPad = (x, z) => (x + .5 - PAD.x) ** 2 + (z + .5 - PAD.z) ** 2 < PAD.r * PAD.r;
-for (const id of Object.keys(TERRAIN)){ if (PAD_SKIP.has(id)) continue; const t = TERRAIN[id]; const h0raw = t.h(PAD.x, PAD.z); const h0 = h0raw == null ? 0 : Math.max(0, h0raw);
-  TERRAIN[id] = { h: (x, z) => inPad(x, z) ? h0 : t.h(x, z), c: (x, z, h) => inPad(x, z) ? ((Math.floor(x) + Math.floor(z)) % 2 ? P.lgrey : P.dgrey) : t.c(x, z, h), pad: true }; }
 /* ============================================================ 渲染器與場景 */
 const canvas = $('gl');
 let renderer; try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' }); } catch (e){ $('err').style.display = 'flex'; $('err').firstElementChild.textContent = '此裝置或瀏覽器不支援 WebGL。'; return; }
@@ -665,7 +659,7 @@ function go(to, jumpTo){
   card.classList.add('hide'); ['next', 'prev'].forEach(id => $(id).disabled = true); $('next').textContent = T().flying;
   const fromKey = DEPART[ST[idx].id] || FULL[ST[idx].id]; if (fromKey){ discFrom = makeDisc(fromKey, 1); discFrom.position.set(0, -.3, -30); discFrom.scale.set(60, 60, 1); }
   if (ST[to].mode === 'walk') prepareLandingTerrain(ST[to].id); else landingTerrain = null;
-  landing.active = false; landing.done = false; landing.justLanded = false; landingG.visible = false; craft.visible = false; landing.dur = (RM ? 4 : 8) * (jumpTo ? .7 : 1);
+  landing.active = false; landing.done = false; landing.justLanded = false; landingG.visible = false; craft.visible = false; landing.dur = (RM ? 4.5 : 9) * (jumpTo ? .7 : 1);
   const toKey = FULL[ST[to].id]; if (toKey){ discTo = makeDisc(toKey, FULL_ASPECT[ST[to].id] || 1, toKey === 'sun'); discTo.position.set(0, .2, -60); discTo.scale.set(.1, .1, 1); }
   $('stSub').textContent = `${to > idx ? T().heading : T().back} ${nameOf(ST[to])}`;
 }
@@ -774,7 +768,6 @@ function startLanding(){
     const safe = cands.filter(c => c.rough <= 1 && c.rough > 0).sort((a, b) => b.rough - a.rough || Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z));
     const pick = safe[0] || cands.slice().sort((a, b) => a.rough - b.rough || Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
     if (pick) best = { x: pick.x, z: pick.z, rough: pick.rough };
-    if (landingTerrain.pad) best = { x: PAD.x, z: PAD.z, rough: 0 }; else if (toSt.id === 'earth') best = { x: 0, z: 0, rough: 0 };
   }
   landing.chosen = best; landing.cands = cands.filter(c => !(c.x === best.x && c.z === best.z)).sort((a, b) => b.rough - a.rough).slice(0, 3);
   // 起落架目標長度:頂端同高,腳長 = 機身高 - 各腳下方地形高
@@ -794,9 +787,9 @@ function updateLanding(now){
   if (!landing.active) return;
   const dt = Math.min(.05, now - landing.lastT); landing.lastT = now;
   const k = clamp((now - landing.t0) / landing.dur, 0, 1); const c = landing.chosen; const gh = landingTerrain ? (landingTerrain.h(0, 0) || 0) : 0;
-  const fade = $('fade'); fade.style.opacity = k < .06 ? 1 - k / .06 : k > .94 ? (k - .94) / .06 : 0;
+  const fade = $('fade'); fade.style.opacity = k < .06 ? 1 - k / .06 : k > .965 ? (k - .965) / .035 : 0;
   // 減少動態:跳過①②,只播 ③④
-  const p3s = RM ? 0 : .5, p3e = RM ? .5 : .75, p4e = 1;
+  const p3s = RM ? 0 : .5, p3e = RM ? .5 : .75, p4e = .88;   // .88–1:觸地後停留,讓人看清火箭已降落
   if (!RM){
     // ① 0–.3 高空掃描
     scanGrid.visible = k < .5; scanGrid.material.opacity = k < .3 ? .45 : .45 * (1 - (k - .3) / .2);
@@ -810,11 +803,11 @@ function updateLanding(now){
   if (k >= p3s && k < p3e){ const u = ease((k - p3s) / (p3e - p3s)); craft.position.set(lerp(c.x + 16, c.x, u), lerp(22, landing.bodyY + 7, u), lerp(c.z - 8, c.z, u));
     lookTmp.set(lerp(0, c.x + 12, u), lerp(26, landing.bodyY + 9, u), lerp(14, c.z + 12, u)); camera.position.copy(lookTmp); camera.lookAt(c.x, lerp(gh, landing.bodyY + 4.5, u), c.z); }
   // ④ 起落架調平 → 觸地
-  if (k >= p3e){ const u = ease((k - p3e) / (p4e - p3e)); craft.position.set(c.x, lerp(landing.bodyY + 7, landing.bodyY, Math.min(1, u * 1.08)), c.z);
+  if (k >= p3e){ const u = ease(clamp((k - p3e) / (p4e - p3e), 0, 1)); craft.position.set(c.x, lerp(landing.bodyY + 7, landing.bodyY, Math.min(1, u * 1.08)), c.z);
     landing.legY = landing.legTarget.map(tl => lerp(.6, tl, u)); landing.legY.forEach((L, i) => setLeg(i, L));
     camera.position.set(c.x + 12, landing.bodyY + 9, c.z + 12); camera.lookAt(c.x, lerp(landing.bodyY + 4.5, landing.bodyY + 3, u), c.z);
     if (u >= .97 && !landing.dusted){ landing.dusted = true; spawnDust(c.x, landing.bodyY - Math.max(...landing.legTarget), c.z); }
-    if (!RM && u > .96) camera.position.x += (Math.random() - .5) * .18, camera.position.y += (Math.random() - .5) * .12; }
+    if (!RM && u > .96 && k < p4e + .02) camera.position.x += (Math.random() - .5) * .18, camera.position.y += (Math.random() - .5) * .12; }
   const flame = craft.getObjectByName('flame'); if (flame){ const thrust = k < p4e - .04 ? .8 + Math.random() * .5 : 0; flame.visible = thrust > 0; flame.scale.set(.8, 1.5 * thrust, .8); flame.position.y = -.75 * thrust; }
   if (dustPts){ const a = dustPts.geometry.attributes.position; for (let i = 0; i < dustVel.length / 3; i++){ a.array[i * 3] += dustVel[i * 3] * dt; a.array[i * 3 + 1] += dustVel[i * 3 + 1] * dt; a.array[i * 3 + 2] += dustVel[i * 3 + 2] * dt; dustVel[i * 3 + 1] -= 4 * dt; } a.needsUpdate = true; dustPts.material.opacity = Math.max(0, dustPts.material.opacity - dt * 1.2); }
   if (k >= 1) finishLanding();
